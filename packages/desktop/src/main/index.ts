@@ -5,7 +5,14 @@ import { getGitChangeSummary, getGitPatch } from '@main/git';
 import { installApplicationMenu, installStatusItem } from '@main/menu';
 import { listRootItems, type RootItemsScope } from '@main/root-items';
 import { WorkspaceSessionWatcher } from '@main/session-watcher';
-import { type AppSettings, readAppSettings, validateAccelerator, writeAppSettings } from '@main/settings';
+import { listSkills } from '@main/skills';
+import {
+  readAppSettings,
+  writeAppSettings,
+  type AppSettings,
+  defaultAppSettings,
+  validateAccelerator
+} from '@main/settings';
 import {
   createMainWindow,
   hideComposerWindow,
@@ -87,7 +94,8 @@ const registerComposerShortcut = (accelerator: string) => {
 const menuActions = () => ({
   onShowSettings: showSettings,
   onQuickAccess: toggleComposerWindow,
-  onNewSession: () => void startNewSession()
+  onNewSession: () => void startNewSession(),
+  composerShortcut: appSettings?.composerShortcut ?? defaultAppSettings.composerShortcut
 });
 
 app.whenReady().then(async () => {
@@ -121,6 +129,7 @@ app.whenReady().then(async () => {
   ipcMain.handle('app:list-root-items', async (_event, relativePath: string, scope: RootItemsScope = 'workspace') =>
     listRootItems(relativePath, scope, chat.getWorkspaceCwd())
   );
+  ipcMain.handle('app:list-skills', () => listSkills(chat.getWorkspaceCwd()));
   ipcMain.handle('app:git-changes', (_event, workspacePath?: string) =>
     getGitChangeSummary(workspacePath ?? chat.getWorkspaceCwd())
   );
