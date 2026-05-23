@@ -1,6 +1,6 @@
 import { Menu } from '@base-ui/react/menu';
 import type { EffortLevel, ModelOption } from '@preload/index';
-import { ThinkingButton } from '@renderer/shared/composer/thinking-button';
+import { Thinking } from '@renderer/shared/composer/thinking';
 import { effortLevels } from '@renderer/shared/effort';
 import { Models } from '@renderer/shared/models';
 import { selectedModelKeyState } from '@renderer/state/chat';
@@ -10,17 +10,9 @@ import { Tooltip } from '@renderer/ui/tooltip';
 import { tw } from '@renderer/utils/tw';
 import { useMemo } from 'preact/hooks';
 
-export const ComposerModelPicker = ({
-  models,
-  layered,
-  modelsLoaded,
-  thinkingLevel,
-  onSelectModel,
-  onOpenSettings,
-  selectedModelKey,
-  onSelectThinkingLevel
-}: {
+interface ModelProps {
   layered: boolean;
+  disabled: boolean;
   models: ModelOption[];
   modelsLoaded: boolean;
   thinkingLevel: EffortLevel;
@@ -28,7 +20,19 @@ export const ComposerModelPicker = ({
   selectedModelKey: string;
   onSelectModel: (modelKey: string) => void;
   onSelectThinkingLevel: (level: EffortLevel) => void;
-}) => {
+}
+
+export const Model = ({
+  models,
+  layered,
+  disabled,
+  modelsLoaded,
+  thinkingLevel,
+  onSelectModel,
+  onOpenSettings,
+  selectedModelKey,
+  onSelectThinkingLevel
+}: ModelProps) => {
   const activeModelKey = selectedModelKeyState.value || selectedModelKey;
   const selectedModel = useMemo(
     () => models.find((model) => model.key === activeModelKey) ?? models[0],
@@ -48,7 +52,7 @@ export const ComposerModelPicker = ({
   );
 
   const nextEffort = () => {
-    if (availableEfforts.length < 2) return;
+    if (disabled || availableEfforts.length < 2) return;
     const currentIndex = availableEfforts.findIndex((level) => level.id === thinkingLevel);
     const nextIndex = (currentIndex + 1) % availableEfforts.length;
     playCycleSound();
@@ -67,9 +71,10 @@ export const ComposerModelPicker = ({
         <Menu.Root modal={false}>
           <Tooltip label={selectedModelLabel}>
             <Menu.Trigger
+              disabled={disabled}
               aria-label="Choose model"
               className={tw(
-                'grid place-items-center rounded-full border-0 bg-transparent text-ink select-none',
+                'grid place-items-center rounded-full border-0 bg-transparent text-ink select-none disabled:cursor-not-allowed disabled:opacity-60',
                 showThinkingPicker && 'h-full w-10',
                 !showThinkingPicker && 'size-9.5'
               )}
@@ -96,7 +101,8 @@ export const ComposerModelPicker = ({
           </Menu.Portal>
         </Menu.Root>
       </div>
-      <ThinkingButton
+      <Thinking
+        disabled={disabled}
         label={selectedEffort.label}
         level={thinkingLevel}
         visible={showThinkingPicker}

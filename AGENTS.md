@@ -1,7 +1,7 @@
 # Project Rules
 
 - Avoid vague theme names like `bg-bg`. Use descriptive names such as `bg-canvas`, `bg-composer`, `bg-control`, `text-ink`, and `text-soft`.
-- Do not put Tailwind class lists in constants. Tailwind classes belong inline in `class` or `className` attributes. Use `tw` only for conditional inline classes.
+- Do not put Tailwind class lists in constants. Tailwind classes and conditional styling logic belong inline in `class` or `className` attributes. Use `tw` only inside those attributes for conditional inline classes; when styling repeats, extract a component instead of a class constant.
 - Centralize reusable logic in clearly named utility modules: if a helper or parser is needed in more than one file, extract it to a domain `utils` folder instead of duplicating it.
 - Prefer Tailwind utilities over custom CSS. Keep `styles.css` limited to theme tokens, global element rules, keyframes, pseudo-elements, and third-party data-attribute states that Tailwind cannot express cleanly.
 - Prefer named Tailwind utilities before arbitrary values; use arbitrary values only when no base utility preserves the intended measurement, selector, or color.
@@ -25,7 +25,7 @@
 - Group files that share a domain or filename prefix into a domain folder instead of leaving flat clusters like `workspace-*` files.
 - Inside domain folders, keep child filenames short and precise; avoid repeating the folder/domain name unless it improves clarity.
 - Prefer descriptive file names over generic ones (`items`, `panels`, etc.) so module purpose is obvious from filename.
-- Name component files with clear component words only; avoid extra suffixes like `list` or `card` when the component name is already clear.
+- Name component files with clear component words only; avoid unnecessary domain prefixes or role suffixes like `composer-model-picker`, `thinking-button`, `list`, or `card` when the parent folder or component purpose is already clear.
 - Prefer `index.ts` or `index.tsx` when a module file would repeat its parent folder name.
 - Prefer optimistic cached UI data for popovers, pickers, and frequently opened surfaces; refresh in the background and update only when real data changes.
 - Omit optional object properties when absent instead of serializing `undefined` or placeholder `null` values.
@@ -38,6 +38,7 @@
 - Read environment variables only through `packages/desktop/src/main/environment.ts`; do not scatter `process.env` usage across the app.
 - Sort interface members, type members, JSX props, variables, hooks, hook dependencies, destructured constants, and object constants by total line length when it does not make the code harder to read or break framework conventions.
 - Extract multi-branch render logic into named components or helpers, and hoist repeated role or state checks into clear booleans before JSX.
+- Avoid placeholder ternaries such as `condition ? '' : value`; split branches or extract helpers so each path computes only what it uses.
 - Use hover backgrounds only when an inline control needs a filled selected affordance; otherwise prefer text-color feedback.
 - For expandable rows, keep identifiers inline in titles and reserve expanded content for supporting output, diffs, or detail bodies.
 - The app description is `your coding assistant`
