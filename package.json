@@ -79,8 +79,13 @@
       "icon": "build/icons/icon.icns",
       "category": "public.app-category.developer-tools",
       "extendInfo": {
-        "NSRequiresAquaSystemAppearance": false,
-        "NSPrefersDisplaySafeAreaCompatibilityMode": false
+        "NSDesktopFolderUsageDescription": "Start needs access to project files you choose so your coding agent can read and edit them.",
+        "NSDocumentsFolderUsageDescription": "Start needs access to project files you choose so your coding agent can read and edit them.",
+        "NSDownloadsFolderUsageDescription": "Start needs access to project files you choose so your coding agent can read and edit them.",
+        "NSNetworkVolumesUsageDescription": "Start needs access to project folders you choose on network volumes.",
+        "NSPrefersDisplaySafeAreaCompatibilityMode": false,
+        "NSRemovableVolumesUsageDescription": "Start needs access to project folders you choose on removable drives.",
+        "NSRequiresAquaSystemAppearance": false
       },
       "target": [
         {

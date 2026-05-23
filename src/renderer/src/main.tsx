@@ -1,11 +1,11 @@
 import type { EffortLevel, ImageAttachment, RecentSession } from '@preload/index';
-import { Composer, Turns, Settings } from '@renderer/shared/chat';
+import { Composer, Turns, Settings } from '@renderer/shared/chat/index';
 import { DebugToolbar } from '@renderer/shared/debug';
 import { DropOverlay } from '@renderer/shared/drop-overlay';
-import { SettingsButton } from '@renderer/shared/settings-button';
-import { useChat } from '@renderer/shared/use-chat';
+import { SettingsButton } from '@renderer/shared/settings/button';
+import { useChat } from '@renderer/shared/chat/use-chat';
 import { useFileAttachments } from '@renderer/shared/composer/use-file-attachments';
-import { WorkspaceDock } from '@renderer/shared/workspace-dock';
+import { WorkspaceDock } from '@renderer/shared/workspace/dock';
 import { appHotkeys, useAppHotkey } from '@renderer/ui/hotkeys';
 import { currentRoute, routeUrl, sameRoute, type AppRoute } from '@renderer/utils/route';
 import { render } from 'preact';
@@ -212,16 +212,14 @@ const App = () => {
   );
 
   const chooseWorkspaceFromComposer = useCallback(async () => {
-    const switched = await chooseWorkspaceDirectory();
-    if (surface === 'composer' && switched) void window.pi.app.showMain();
+    await chooseWorkspaceDirectory({ preserveDraft: surface === 'composer' });
   }, [chooseWorkspaceDirectory, surface]);
 
   const selectWorkspaceFromComposer = useCallback(
-    async (path: string) => {
-      const switched = await switchWorkspace(path);
-      if (surface === 'composer' && switched) void window.pi.app.showMain();
+    (path: string) => {
+      void switchWorkspace(path, { preserveDraft: true });
     },
-    [surface, switchWorkspace]
+    [switchWorkspace]
   );
 
   const startNewSession = useCallback(() => {

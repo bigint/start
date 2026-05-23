@@ -7,7 +7,7 @@ import {
   appendTurnThinking,
   setTurnActivity,
   setTurnStreaming
-} from '@renderer/shared/turn-state';
+} from '@renderer/shared/turn/state';
 import type { Turn } from '@renderer/utils/types';
 import type { RefObject } from 'preact';
 import { useEffect } from 'preact/hooks';

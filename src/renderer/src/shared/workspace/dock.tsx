@@ -1,6 +1,6 @@
 import type { RecentSession } from '@preload/index';
 import { RecentSessions } from '@renderer/shared/sessions';
-import { Workspace } from '@renderer/shared/workspace';
+import { Workspace } from '@renderer/shared/workspace/picker';
 
 export const WorkspaceDock = ({
   workspacePath,

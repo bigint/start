@@ -139,6 +139,7 @@ export type SwitchWorkspaceResult = {
   ok: boolean;
   cancelled?: boolean;
   status?: ChatStatus;
+  workspace?: WorkspaceInfo;
   error?: string;
 };
 
@@ -193,6 +194,11 @@ const api = {
     listRootItems: (path: string, scope: 'root' | 'workspace'): Promise<RootItem[]> =>
       ipcRenderer.invoke('app:list-root-items', path, scope),
     workspace: (path?: string): Promise<WorkspaceInfo> => ipcRenderer.invoke('app:workspace', path),
+    onWorkspaceChanged: (listener: (workspace: WorkspaceInfo) => void): (() => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, workspace: WorkspaceInfo) => listener(workspace);
+      ipcRenderer.on('app:workspace-changed', handler);
+      return () => ipcRenderer.removeListener('app:workspace-changed', handler);
+    },
     runtime: (): Promise<AppRuntime> => ipcRenderer.invoke('app:runtime'),
     settings: (): Promise<AppSettings> => ipcRenderer.invoke('app:settings'),
     filePath: (file: Parameters<typeof webUtils.getPathForFile>[0]): string => webUtils.getPathForFile(file),

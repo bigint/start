@@ -1,10 +1,9 @@
-import type { WorkspaceFolder } from '@preload/index';
-import { useWorkspace } from '@renderer/shared/use-workspace';
-import { WorkspaceMenu } from '@renderer/shared/workspace-menu';
-import { cachedWorkspaceFolders, loadWorkspaceFolders } from '@renderer/shared/workspace-folders';
+import { useWorkspace } from '@renderer/shared/workspace/info';
+import { WorkspaceMenu } from '@renderer/shared/workspace/menu';
+import { useWorkspaceFolders } from '@renderer/shared/workspace/folders';
 import { AppMenu } from '@renderer/ui/menu';
 import { CommonTooltip } from '@renderer/ui/tooltip';
-import { useCallback, useEffect, useState } from 'preact/hooks';
+import { useCallback, useState } from 'preact/hooks';
 
 export const ComposerWorkspacePicker = ({
   workspacePath,
@@ -16,32 +15,16 @@ export const ComposerWorkspacePicker = ({
   onSelectWorkspace: (path: string) => void;
 }) => {
   const workspace = useWorkspace(workspacePath);
-  const [folders, setFolders] = useState<WorkspaceFolder[]>(cachedWorkspaceFolders() ?? []);
   const [open, setOpen] = useState(false);
-
-  const refreshFolders = useCallback(() => {
-    void loadWorkspaceFolders()
-      .then(setFolders)
-      .catch(() => setFolders(cachedWorkspaceFolders() ?? []));
-  }, []);
+  const { folders, refreshFolders } = useWorkspaceFolders({ active: open, workspacePath });
 
   const updateOpen = useCallback(
     (nextOpen: boolean) => {
       setOpen(nextOpen);
-      if (!nextOpen) return;
-
-      const cachedFolders = cachedWorkspaceFolders();
-      if (cachedFolders) setFolders(cachedFolders);
-      refreshFolders();
+      if (nextOpen) refreshFolders();
     },
     [refreshFolders]
   );
-
-  useEffect(() => {
-    refreshFolders();
-  }, [refreshFolders, workspacePath]);
-
-  useEffect(() => window.pi.chat.onRecentSessionsChanged(refreshFolders), [refreshFolders]);
 
   if (!workspace) return null;
 

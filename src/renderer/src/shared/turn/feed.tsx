@@ -1,4 +1,4 @@
-import { TurnArticle } from '@renderer/shared/turn';
+import { TurnArticle } from '@renderer/shared/turn/article';
 import type { Turn } from '@renderer/utils/types';
 import { useLayoutEffect, useMemo, useRef } from 'preact/hooks';
 

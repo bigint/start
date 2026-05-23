@@ -32,6 +32,7 @@ import {
   stripAttachmentData
 } from '@main/attachments';
 import { readStartState, type StartState, updateStartState } from '@main/storage';
+import { activateWorkspaceAccess } from '@main/workspace/access';
 import {
   type ChatStatus,
   type CommandResult,
@@ -144,6 +145,7 @@ export class ChatService {
       this.setActiveSession(sessionManager);
       this.workspaceCwd = sessionManager.getCwd() || this.workspaceCwd;
       this.persistState({ lastWorkspace: this.workspaceCwd });
+      activateWorkspaceAccess(this.workspaceCwd);
       this.shouldCreateSession = false;
       return {
         ok: true,
@@ -254,6 +256,7 @@ export class ChatService {
       this.shouldCreateSession = true;
       this.workspaceCwd = nextCwd;
       this.persistState({ lastWorkspace: this.workspaceCwd });
+      activateWorkspaceAccess(this.workspaceCwd);
 
       return { ok: true, status: await this.getStatus() };
     } catch (error) {

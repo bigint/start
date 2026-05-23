@@ -1,5 +1,5 @@
 import { Markdown } from '@renderer/markdown/markdown';
-import { TurnDetails } from '@renderer/shared/turn-details';
+import { TurnDetails } from '@renderer/shared/turn/details';
 import { CopyButton } from '@renderer/ui/copy';
 import { cn } from '@renderer/utils/cn';
 import { formatTurnTime } from '@renderer/utils/time';

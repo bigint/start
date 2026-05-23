@@ -13,9 +13,16 @@ import {
   sendToMainWindow,
   showMainWindow,
   toggleComposerWindow,
-  submitComposerToMainWindow
+  submitComposerToMainWindow,
+  withComposerBlurSuppressed
 } from '@main/window';
-import { getWorkspace } from '@main/workspace';
+import { getCachedWorkspace, getWorkspace, onWorkspaceChanged } from '@main/workspace/index';
+import {
+  activateWorkspaceAccess,
+  deactivateWorkspaceAccess,
+  openWorkspaceDialogOptions,
+  rememberWorkspaceBookmark
+} from '@main/workspace/access';
 import {
   app,
   BrowserWindow,
@@ -33,6 +40,7 @@ app.setName(appMenuName);
 const chat = new ChatService();
 
 let appSettings: AppSettings | null = null;
+let stopWorkspaceChanged: (() => void) | undefined;
 const recentSessionsWatcher = new WorkspaceSessionWatcher();
 
 const notifyRecentSessionsChanged = (workspacePath = chat.getWorkspaceCwd()) => {
@@ -45,6 +53,14 @@ const notifyStatusChanged = () => {
 
 const watchRecentSessions = (workspacePath = chat.getWorkspaceCwd()) => {
   recentSessionsWatcher.watch(workspacePath, notifyRecentSessionsChanged);
+};
+
+const withCachedWorkspace = async <T extends { status?: { workspacePath: string } }>(result: T) => {
+  const workspacePath = result.status?.workspacePath;
+  if (!workspacePath) return result;
+
+  const workspace = await getCachedWorkspace(workspacePath);
+  return workspace ? { ...result, workspace } : result;
 };
 
 const showSettings = () => {
@@ -86,10 +102,14 @@ app.whenReady().then(async () => {
 
   appSettings = await readAppSettings();
   registerComposerShortcut(appSettings.composerShortcut);
+  activateWorkspaceAccess(chat.getWorkspaceCwd());
 
   installApplicationMenu(menuActions());
   installStatusItem(menuActions());
   watchRecentSessions();
+  stopWorkspaceChanged = onWorkspaceChanged((workspace) => {
+    sendToRendererWindows('app:workspace-changed', workspace);
+  });
 
   ipcMain.handle('app:debug-metrics', getDebugMetrics);
   ipcMain.handle('app:focus-state', getAppFocusState);
@@ -149,22 +169,27 @@ app.whenReady().then(async () => {
       notifyStatusChanged();
       notifyRecentSessionsChanged(result.status?.workspacePath);
     }
-    return result;
+    return withCachedWorkspace(result);
   });
-  ipcMain.handle('chat:choose-workspace-directory', async () => {
-    const result = await dialog.showOpenDialog({
+  ipcMain.handle('chat:choose-workspace-directory', async (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender as WebContents);
+    const dialogOptions = {
       defaultPath: chat.getWorkspaceCwd(),
-      properties: ['openDirectory']
-    });
+      ...openWorkspaceDialogOptions()
+    };
+    const result = await withComposerBlurSuppressed(() =>
+      window ? dialog.showOpenDialog(window, dialogOptions) : dialog.showOpenDialog(dialogOptions)
+    );
     const path = result.filePaths[0];
     if (result.canceled || !path) return { ok: true, cancelled: true, status: await chat.getStatus() };
+    rememberWorkspaceBookmark(path, result.bookmarks?.[0]);
     const nextResult = await chat.switchWorkspace(path);
     if (nextResult.ok) {
       watchRecentSessions(nextResult.status?.workspacePath);
       notifyStatusChanged();
       notifyRecentSessionsChanged(nextResult.status?.workspacePath);
     }
-    return nextResult;
+    return withCachedWorkspace(nextResult);
   });
   ipcMain.handle('chat:open-session', async (_event, path: string) => {
     const result = await chat.openSession(path);
@@ -232,7 +257,10 @@ app.on('before-quit', () => {
   globalShortcut.unregisterAll();
   clearAppFocusTimer();
   recentSessionsWatcher.close();
+  stopWorkspaceChanged?.();
+  stopWorkspaceChanged = undefined;
   chat.dispose();
+  deactivateWorkspaceAccess();
 });
 
 app.on('window-all-closed', () => {

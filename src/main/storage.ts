@@ -7,6 +7,7 @@ export type StartState = {
   composerShortcut: string;
   lastWorkspace?: string;
   selectedModelKey?: string;
+  workspaceBookmarks?: Record<string, string>;
   selectedThinkingLevel: EffortLevel;
 };
 
@@ -22,6 +23,18 @@ export const startStatePath = () => join(startDir(), 'state.json');
 
 const cleanString = (value: unknown) => (typeof value === 'string' && value.trim() ? value.trim() : undefined);
 
+const cleanStringRecord = (value: unknown) => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+
+  const entries = Object.entries(value).flatMap(([key, entry]) => {
+    const cleanKey = cleanString(key);
+    const cleanEntry = cleanString(entry);
+    return cleanKey && cleanEntry ? ([[cleanKey, cleanEntry]] as const) : [];
+  });
+
+  return entries.length > 0 ? Object.fromEntries(entries) : undefined;
+};
+
 const cleanThinkingLevel = (value: unknown): EffortLevel => {
   if (value === 'low' || value === 'medium' || value === 'high' || value === 'xhigh') return value;
   return defaultStartState.selectedThinkingLevel;
@@ -32,11 +45,13 @@ export const parseStartState = (value: unknown): StartState => {
   const state = value as Partial<StartState>;
   const lastWorkspace = cleanString(state.lastWorkspace);
   const selectedModelKey = cleanString(state.selectedModelKey);
+  const workspaceBookmarks = cleanStringRecord(state.workspaceBookmarks);
   return {
     composerShortcut: cleanString(state.composerShortcut) ?? defaultStartState.composerShortcut,
     selectedThinkingLevel: cleanThinkingLevel(state.selectedThinkingLevel),
     ...(lastWorkspace ? { lastWorkspace } : {}),
-    ...(selectedModelKey ? { selectedModelKey } : {})
+    ...(selectedModelKey ? { selectedModelKey } : {}),
+    ...(workspaceBookmarks ? { workspaceBookmarks } : {})
   };
 };
 

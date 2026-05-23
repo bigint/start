@@ -1,11 +1,10 @@
-import type { WorkspaceFolder } from '@preload/index';
-import { useWorkspace } from '@renderer/shared/use-workspace';
-import { WorkspaceMenu } from '@renderer/shared/workspace-menu';
-import { cachedWorkspaceFolders, loadWorkspaceFolders } from '@renderer/shared/workspace-folders';
+import { useWorkspace } from '@renderer/shared/workspace/info';
+import { WorkspaceMenu } from '@renderer/shared/workspace/menu';
+import { useWorkspaceFolders } from '@renderer/shared/workspace/folders';
 import { ChevronDownIcon } from '@renderer/ui/icons';
 import { AppMenu } from '@renderer/ui/menu';
 import { cn } from '@renderer/utils/cn';
-import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
+import { useCallback, useRef, useState } from 'preact/hooks';
 
 export const Workspace = ({
   workspacePath,
@@ -18,32 +17,16 @@ export const Workspace = ({
 }) => {
   const workspace = useWorkspace(workspacePath);
   const rootRef = useRef<HTMLDivElement>(null);
-  const [folders, setFolders] = useState<WorkspaceFolder[]>(cachedWorkspaceFolders() ?? []);
   const [open, setOpen] = useState(false);
-
-  const refreshFolders = useCallback(() => {
-    void loadWorkspaceFolders()
-      .then(setFolders)
-      .catch(() => setFolders(cachedWorkspaceFolders() ?? []));
-  }, []);
+  const { folders, refreshFolders } = useWorkspaceFolders({ workspacePath });
 
   const updateOpen = useCallback(
     (nextOpen: boolean) => {
       setOpen(nextOpen);
-      if (!nextOpen) return;
-
-      const cachedFolders = cachedWorkspaceFolders();
-      if (cachedFolders) setFolders(cachedFolders);
-      refreshFolders();
+      if (nextOpen) refreshFolders();
     },
     [refreshFolders]
   );
-
-  useEffect(() => {
-    refreshFolders();
-  }, [refreshFolders, workspacePath]);
-
-  useEffect(() => window.pi.chat.onRecentSessionsChanged(refreshFolders), [refreshFolders]);
 
   if (!workspace) return null;
 

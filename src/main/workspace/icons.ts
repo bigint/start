@@ -1,14 +1,6 @@
 import { readdir, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
-import { getGitBranch, isGitRepository } from '@main/git';
 import { nativeImage } from 'electron';
-
-export type WorkspaceInfo = {
-  branchName?: string;
-  folderName: string;
-  iconDataUrl: string;
-  path: string;
-};
 
 type IconCandidate = {
   filePath: string;
@@ -16,15 +8,6 @@ type IconCandidate = {
 };
 
 const imageExtensions = new Set(['.avif', '.gif', '.ico', '.jpeg', '.jpg', '.png', '.svg', '.webp']);
-const mimeTypes = new Map([
-  ['.avif', 'image/avif'],
-  ['.gif', 'image/gif'],
-  ['.ico', 'image/x-icon'],
-  ['.jpeg', 'image/jpeg'],
-  ['.jpg', 'image/jpeg'],
-  ['.png', 'image/png'],
-  ['.webp', 'image/webp']
-]);
 const ignoredDirectories = new Set([
   '.git',
   '.next',
@@ -40,8 +23,8 @@ const maxCandidates = 80;
 const maxDepth = 5;
 const maxEntries = 8000;
 const maxIconBytes = 1_500_000;
-const maxWorkspaceCacheSize = 64;
-const workspaceCache = new Map<string, Promise<WorkspaceInfo>>();
+const maxSvgBytes = 300_000;
+const cachedIconDimension = 96;
 
 const exactIconNameScores = new Map([
   ['app-icon', 980],
@@ -206,30 +189,11 @@ const scanIconCandidates = async (root: string) => {
 
 const svgDataUrl = async (filePath: string) => {
   const details = await stat(filePath).catch(() => undefined);
-  if (!details || details.size > maxIconBytes) return undefined;
+  if (!details || details.size > maxSvgBytes) return undefined;
 
   const source = await readFile(filePath, 'utf8').catch(() => '');
   if (!source.trimStart().startsWith('<svg')) return undefined;
   return `data:image/svg+xml;base64,${Buffer.from(source).toString('base64')}`;
-};
-
-const hashString = (value: string) => {
-  let hash = 0;
-  for (let index = 0; index < value.length; index += 1) {
-    hash = (hash << 5) - hash + value.charCodeAt(index);
-    hash |= 0;
-  }
-  return Math.abs(hash);
-};
-
-const generatedIconDataUrl = (folderName: string) => {
-  const hash = hashString(folderName);
-  const coldHues = [198, 206, 214, 222, 230, 238];
-  const firstHue = coldHues[hash % coldHues.length] ?? 214;
-  const secondHue = coldHues[Math.floor(hash / coldHues.length) % coldHues.length] ?? 230;
-  const angle = 120 + (hash % 18);
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><linearGradient id="g" gradientTransform="rotate(${angle} .5 .5)"><stop stop-color="hsl(${firstHue} 48% 68%)"/><stop offset="1" stop-color="hsl(${secondHue} 46% 46%)"/></linearGradient></defs><circle cx="32" cy="32" r="32" fill="url(#g)"/></svg>`;
-  return `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
 };
 
 const imageDataUrl = async (filePath: string) => {
@@ -245,49 +209,43 @@ const imageDataUrl = async (filePath: string) => {
   const size = image.getSize();
   if (size.width < 24 || size.height < 24) return undefined;
 
-  const data = await readFile(filePath).catch(() => undefined);
-  const mimeType = mimeTypes.get(extension);
-  if (!data || !mimeType) return undefined;
+  const scale = Math.min(1, cachedIconDimension / Math.max(size.width, size.height));
+  const resized = image.resize({
+    quality: 'best',
+    width: Math.max(1, Math.round(size.width * scale)),
+    height: Math.max(1, Math.round(size.height * scale))
+  });
+  if (resized.isEmpty()) return undefined;
 
-  return `data:${mimeType};base64,${data.toString('base64')}`;
+  return `data:image/png;base64,${resized.toPNG().toString('base64')}`;
 };
 
-const workspaceInfo = (
-  cwd: string,
-  folderName: string,
-  iconDataUrl: string,
-  branchName: string | undefined
-): WorkspaceInfo => ({
-  ...(branchName ? { branchName } : {}),
-  folderName,
-  iconDataUrl,
-  path: cwd
-});
+const hashString = (value: string) => {
+  let hash = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash << 5) - hash + value.charCodeAt(index);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+};
 
-const readWorkspace = async (cwd: string): Promise<WorkspaceInfo> => {
-  const folderName = path.basename(cwd) || cwd;
-  const isGitWorkspace = await isGitRepository(cwd);
-  const branchName = isGitWorkspace ? await getGitBranch(cwd) : undefined;
+export const generatedWorkspaceIconDataUrl = (folderName: string) => {
+  const hash = hashString(folderName);
+  const coldHues = [198, 206, 214, 222, 230, 238];
+  const firstHue = coldHues[hash % coldHues.length] ?? 214;
+  const secondHue = coldHues[Math.floor(hash / coldHues.length) % coldHues.length] ?? 230;
+  const angle = 120 + (hash % 18);
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><linearGradient id="g" gradientTransform="rotate(${angle} .5 .5)"><stop stop-color="hsl(${firstHue} 48% 68%)"/><stop offset="1" stop-color="hsl(${secondHue} 46% 46%)"/></linearGradient></defs><circle cx="32" cy="32" r="32" fill="url(#g)"/></svg>`;
+  return `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
+};
 
-  const candidates = await scanIconCandidates(cwd);
+export const workspaceIconDataUrl = async (root: string, folderName: string) => {
+  const candidates = await scanIconCandidates(root);
 
   for (const candidate of candidates) {
     const iconDataUrl = await imageDataUrl(candidate.filePath);
-    if (iconDataUrl) return workspaceInfo(cwd, folderName, iconDataUrl, branchName);
+    if (iconDataUrl) return iconDataUrl;
   }
 
-  return workspaceInfo(cwd, folderName, generatedIconDataUrl(folderName), branchName);
-};
-
-export const getWorkspace = (cwd = process.cwd()) => {
-  const cached = workspaceCache.get(cwd);
-  if (cached) return cached;
-
-  const workspacePromise = readWorkspace(cwd);
-  if (workspaceCache.size >= maxWorkspaceCacheSize) {
-    const oldestKey = workspaceCache.keys().next().value;
-    if (oldestKey) workspaceCache.delete(oldestKey);
-  }
-  workspaceCache.set(cwd, workspacePromise);
-  return workspacePromise;
+  return generatedWorkspaceIconDataUrl(folderName);
 };

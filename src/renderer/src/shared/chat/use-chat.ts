@@ -8,9 +8,10 @@ import type {
 } from '@preload/index';
 import { createTurn } from '@renderer/functions/chat';
 import { commandInput, commandMode } from '@renderer/shared/input';
-import { useChatEvents } from '@renderer/shared/use-chat-events';
+import { useChatEvents } from '@renderer/shared/chat/events';
 import { clearFinderItemsCache } from '@renderer/shared/use-finder-items';
-import { loadWorkspaceFolders } from '@renderer/shared/workspace-folders';
+import { forgetWorkspace, rememberWorkspace } from '@renderer/shared/workspace/cache';
+import { primeWorkspaceFolders } from '@renderer/shared/workspace/folders';
 import { selectedModelKeyState } from '@renderer/state/chat';
 import type { Turn } from '@renderer/utils/types';
 import type { RefObject } from 'preact';
@@ -21,6 +22,12 @@ type UseChatOptions = {
   onShowSettings: () => void;
   textareaRef: RefObject<HTMLTextAreaElement | HTMLInputElement>;
 };
+
+type ClearSessionOptions = {
+  preserveDraft?: boolean;
+};
+
+type WorkspaceSwitchOptions = ClearSessionOptions;
 
 export const useChat = ({ onShowChat, onShowSettings, textareaRef }: UseChatOptions) => {
   const [turns, setTurns] = useState<Turn[]>([]);
@@ -73,14 +80,17 @@ export const useChat = ({ onShowChat, onShowSettings, textareaRef }: UseChatOpti
     if (nextStatus.thinkingLevel) setThinkingLevel(nextStatus.thinkingLevel);
   }, [updateActiveSessionId]);
 
-  const clearSession = useCallback(() => {
-    assistantIdRef.current = null;
-    terminalIdRef.current = null;
-    setDraft('');
-    setTurns([]);
-    setIsGenerating(false);
-    updateActiveSessionId(undefined);
-  }, [updateActiveSessionId]);
+  const clearSession = useCallback(
+    ({ preserveDraft = false }: ClearSessionOptions = {}) => {
+      assistantIdRef.current = null;
+      terminalIdRef.current = null;
+      if (!preserveDraft) setDraft('');
+      setTurns([]);
+      setIsGenerating(false);
+      updateActiveSessionId(undefined);
+    },
+    [updateActiveSessionId]
+  );
 
   useChatEvents({
     onShowChat,
@@ -192,15 +202,20 @@ export const useChat = ({ onShowChat, onShowSettings, textareaRef }: UseChatOpti
   );
 
   const applyWorkspaceSwitch = useCallback(
-    (result: SwitchWorkspaceResult) => {
+    (result: SwitchWorkspaceResult, options: WorkspaceSwitchOptions = {}) => {
       if (result.cancelled) return false;
       if (!result.ok || !result.status) {
         setStatus(result.error ?? 'Workspace could not be switched.');
         return false;
       }
 
+      if (result.workspace) {
+        rememberWorkspace(result.workspace);
+      } else {
+        forgetWorkspace(result.status.workspacePath);
+      }
       clearFinderItemsCache();
-      clearSession();
+      clearSession(options);
       setWorkspacePath(result.status.workspacePath);
       selectedModelKeyState.value = result.status.selectedModelKey;
       setSelectedModelKey(result.status.selectedModelKey);
@@ -208,7 +223,7 @@ export const useChat = ({ onShowChat, onShowSettings, textareaRef }: UseChatOpti
       setStatus(
         result.status.ready ? `Using ${result.status.modelLabel}` : (result.status.error ?? 'Pi is not ready.')
       );
-      void loadWorkspaceFolders();
+      primeWorkspaceFolders(result.status.workspacePath);
       textareaRef.current?.focus();
       return true;
     },
@@ -216,13 +231,16 @@ export const useChat = ({ onShowChat, onShowSettings, textareaRef }: UseChatOpti
   );
 
   const switchWorkspace = useCallback(
-    async (path: string) => applyWorkspaceSwitch(await window.pi.chat.switchWorkspace(path)),
+    async (path: string, options?: WorkspaceSwitchOptions) =>
+      applyWorkspaceSwitch(await window.pi.chat.switchWorkspace(path), options),
     [applyWorkspaceSwitch]
   );
 
-  const chooseWorkspaceDirectory = useCallback(async () => {
-    return applyWorkspaceSwitch(await window.pi.chat.chooseWorkspaceDirectory());
-  }, [applyWorkspaceSwitch]);
+  const chooseWorkspaceDirectory = useCallback(
+    async (options?: WorkspaceSwitchOptions) =>
+      applyWorkspaceSwitch(await window.pi.chat.chooseWorkspaceDirectory(), options),
+    [applyWorkspaceSwitch]
+  );
 
   const loginSubscription = useCallback(
     async (provider: string) => {

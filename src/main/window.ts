@@ -5,13 +5,11 @@ import { app, BrowserWindow, type BrowserWindowConstructorOptions, screen, shell
 
 const getRendererUrl = () => (app.isPackaged ? null : (environment.rendererUrl ?? null));
 
-const composerIdleDestroyMs = 120000;
-
 let mainWindow: BrowserWindow | null = null;
 let composerWindow: BrowserWindow | null = null;
 let composerVisible = false;
 let composerOpenedFromStart = false;
-let composerDestroyTimer: NodeJS.Timeout | undefined;
+let composerBlurSuppressionDepth = 0;
 
 const openExternalUrl = (url: string) => {
   if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('mailto:')) {
@@ -32,21 +30,6 @@ const loadRenderer = (window: BrowserWindow, surface: 'composer' | 'main') => {
 };
 
 const activeDisplayWorkArea = () => screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea;
-
-const clearComposerDestroyTimer = () => {
-  if (composerDestroyTimer) clearTimeout(composerDestroyTimer);
-  composerDestroyTimer = undefined;
-};
-
-const scheduleComposerDestroy = () => {
-  clearComposerDestroyTimer();
-  composerDestroyTimer = setTimeout(() => {
-    composerDestroyTimer = undefined;
-    if (composerVisible || !composerWindow || composerWindow.isDestroyed()) return;
-    composerWindow.destroy();
-  }, composerIdleDestroyMs);
-  composerDestroyTimer.unref?.();
-};
 
 export const createMainWindow = (): BrowserWindow => {
   if (mainWindow && !mainWindow.isDestroyed()) return mainWindow;
@@ -114,7 +97,6 @@ export const createMainWindow = (): BrowserWindow => {
 };
 
 export const createComposerWindow = (): BrowserWindow => {
-  clearComposerDestroyTimer();
   if (composerWindow && !composerWindow.isDestroyed()) return composerWindow;
 
   const window = new BrowserWindow({
@@ -156,12 +138,11 @@ export const createComposerWindow = (): BrowserWindow => {
   });
 
   window.on('blur', () => {
-    hideComposerWindow();
+    if (composerBlurSuppressionDepth === 0) hideComposerWindow();
   });
 
   window.on('closed', () => {
     if (composerWindow === window) {
-      clearComposerDestroyTimer();
       composerWindow = null;
       composerVisible = false;
     }
@@ -180,6 +161,15 @@ export const createComposerWindow = (): BrowserWindow => {
 
   loadRenderer(window, 'composer');
   return window;
+};
+
+export const withComposerBlurSuppressed = async <T>(action: () => Promise<T>): Promise<T> => {
+  composerBlurSuppressionDepth += 1;
+  try {
+    return await action();
+  } finally {
+    composerBlurSuppressionDepth = Math.max(0, composerBlurSuppressionDepth - 1);
+  }
 };
 
 export const showMainWindow = () => {
@@ -231,11 +221,9 @@ export const hideComposerWindow = ({ discard = true, keepAppActive = false }: Hi
   composerWindow.setIgnoreMouseEvents(true);
   composerWindow.hide();
   if (shouldHideApp) app.hide();
-  scheduleComposerDestroy();
 };
 
 export const showComposerWindow = () => {
-  clearComposerDestroyTimer();
   composerOpenedFromStart = BrowserWindow.getFocusedWindow() === mainWindow;
   const window = createComposerWindow();
   composerVisible = true;

@@ -8,7 +8,10 @@
 - Keep files small. Split component files before they approach 300 lines.
 - Keep UI smooth: avoid flicker, avoid unnecessary re-renders, memoize only when it helps, and animate only opacity/transform for high-frequency UI.
 - Keep primary conversational content direct; place diagnostics, metadata, and tool output behind concise collapsed details.
+- Group files that share a domain or filename prefix into a domain folder instead of leaving flat clusters like `workspace-*` files.
+- Inside domain folders, keep child filenames short and precise; avoid repeating the folder/domain name unless it improves clarity.
 - Name component files with clear component words only; avoid extra suffixes like `list` or `card` when the component name is already clear.
+- Prefer optimistic cached UI data for popovers, pickers, and frequently opened surfaces; refresh in the background and update only when real data changes.
 - Omit optional object properties when absent instead of serializing `undefined` or placeholder `null` values.
 - Read environment variables only through `src/main/environment.ts`; do not scatter `process.env` usage across the app.
 - Sort props, variables, hooks, destructured constants, and object constants by total line length when it does not make the code harder to read or break framework conventions.
