@@ -11,6 +11,7 @@ import {
   hideComposerWindow,
   sendToRendererWindows,
   sendToMainWindow,
+  showMainWindow,
   toggleComposerWindow,
   submitComposerToMainWindow
 } from '@main/window';
@@ -36,6 +37,10 @@ const recentSessionsWatcher = new WorkspaceSessionWatcher();
 
 const notifyRecentSessionsChanged = (workspacePath = chat.getWorkspaceCwd()) => {
   sendToRendererWindows('chat:recent-sessions-changed', { workspacePath });
+};
+
+const notifyStatusChanged = () => {
+  sendToRendererWindows('chat:status-changed');
 };
 
 const watchRecentSessions = (workspacePath = chat.getWorkspaceCwd()) => {
@@ -99,6 +104,10 @@ app.whenReady().then(async () => {
   ipcMain.handle('app:hide-composer', () => {
     hideComposerWindow();
   });
+  ipcMain.handle('app:show-main', () => {
+    hideComposerWindow({ keepAppActive: true });
+    showMainWindow();
+  });
   ipcMain.handle('app:open-settings', () => {
     hideComposerWindow({ keepAppActive: true });
     showSettings();
@@ -137,6 +146,7 @@ app.whenReady().then(async () => {
     const result = await chat.switchWorkspace(path);
     if (result.ok) {
       watchRecentSessions(result.status?.workspacePath);
+      notifyStatusChanged();
       notifyRecentSessionsChanged(result.status?.workspacePath);
     }
     return result;
@@ -151,6 +161,7 @@ app.whenReady().then(async () => {
     const nextResult = await chat.switchWorkspace(path);
     if (nextResult.ok) {
       watchRecentSessions(nextResult.status?.workspacePath);
+      notifyStatusChanged();
       notifyRecentSessionsChanged(nextResult.status?.workspacePath);
     }
     return nextResult;
@@ -159,6 +170,7 @@ app.whenReady().then(async () => {
     const result = await chat.openSession(path);
     if (result.ok) {
       watchRecentSessions();
+      notifyStatusChanged();
       notifyRecentSessionsChanged();
     }
     return result;
@@ -167,6 +179,7 @@ app.whenReady().then(async () => {
     const result = await chat.openSessionId(sessionId);
     if (result.ok) {
       watchRecentSessions();
+      notifyStatusChanged();
       notifyRecentSessionsChanged();
     }
     return result;
@@ -182,8 +195,16 @@ app.whenReady().then(async () => {
   ipcMain.handle('chat:submit-subscription-auth-input', (_event, value: string) =>
     chat.submitSubscriptionAuthInput(value)
   );
-  ipcMain.handle('chat:select-model', (_event, modelKey: string) => chat.selectModel(modelKey));
-  ipcMain.handle('chat:select-thinking-level', (_event, level: string) => chat.selectThinkingLevel(level));
+  ipcMain.handle('chat:select-model', async (_event, modelKey: string) => {
+    const status = await chat.selectModel(modelKey);
+    notifyStatusChanged();
+    return status;
+  });
+  ipcMain.handle('chat:select-thinking-level', async (_event, level: string) => {
+    const status = await chat.selectThinkingLevel(level);
+    notifyStatusChanged();
+    return status;
+  });
   ipcMain.handle('chat:send', async (event, prompt: string, attachments = []) => {
     const result = await chat.send(prompt, event.sender as WebContents, attachments);
     if (result.ok) notifyRecentSessionsChanged();

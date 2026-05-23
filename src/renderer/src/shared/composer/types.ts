@@ -14,6 +14,7 @@ export type ComposerProps = {
   isGenerating: boolean;
   previousTurn: string;
   overlay?: boolean;
+  workspacePath: string | undefined;
   thinkingLevel: EffortLevel;
   onRefillPrevious: () => void;
   selectedModelKey: string | undefined;
@@ -22,6 +23,8 @@ export type ComposerProps = {
   onRemoveAttachment: (id: string) => void;
   onOpenSettings: () => void;
   onOpenAttachment: (path: string) => void;
+  onChooseWorkspaceDirectory: () => void;
+  onSelectWorkspace: (path: string) => void;
   onSelectThinkingLevel: (level: EffortLevel) => void;
   textareaRef: RefObject<HTMLTextAreaElement | HTMLInputElement>;
 };

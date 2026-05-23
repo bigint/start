@@ -2,9 +2,11 @@ import { Menu } from '@base-ui/react/menu';
 import { cn } from '@renderer/utils/cn';
 import type { ComponentChildren } from 'preact';
 
+export type MenuPanelWidth = 'provider' | 'model' | 'workspace' | 'workspaceBubble';
+
 type MenuPanelProps = {
   children: ComponentChildren;
-  width: 'provider' | 'model' | 'workspace';
+  width: MenuPanelWidth;
 };
 
 export const AppMenu = Menu;
@@ -17,6 +19,7 @@ export const MenuPanel = ({ children, width }: MenuPanelProps) => {
         'origin-bottom rounded-2xl bg-panel p-1 shadow-panel outline-0 transition-[opacity,transform] duration-100 ease-out data-[ending-style]:scale-[0.96] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.96] data-[starting-style]:opacity-0',
         width === 'provider' && 'w-44',
         width === 'model' && 'w-56',
+        width === 'workspaceBubble' && 'w-72',
         width === 'workspace' && 'w-[var(--anchor-width)] min-w-0 max-w-64'
       )}
     >

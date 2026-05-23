@@ -193,6 +193,11 @@ export const useChatEvents = ({
       if (activity) setTurnActivity(setTurns, id, activity);
     });
 
+    const offStatusChanged = window.pi.chat.onStatusChanged(() => {
+      void syncStatus();
+      void loadModels();
+    });
+
     const offFocusStateChanged = window.pi.app.onFocusStateChanged((state) => {
       if (!state.focused) return;
 
@@ -206,6 +211,7 @@ export const useChatEvents = ({
       offError();
       offEvent();
       offNewSession();
+      offStatusChanged();
       offThinkingDelta();
       offFocusStateChanged();
       offShowSettings();

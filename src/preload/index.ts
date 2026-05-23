@@ -200,6 +200,7 @@ const api = {
     setComposerShortcut: (shortcut: string): Promise<AppSettingsResult> =>
       ipcRenderer.invoke('app:set-composer-shortcut', shortcut),
     hideComposer: (): Promise<void> => ipcRenderer.invoke('app:hide-composer'),
+    showMain: (): Promise<void> => ipcRenderer.invoke('app:show-main'),
     openSettings: (): Promise<void> => ipcRenderer.invoke('app:open-settings'),
     submitComposer: (prompt: string, attachments: ImageAttachment[] = []): Promise<void> =>
       ipcRenderer.invoke('app:submit-composer', prompt, attachments),
@@ -240,6 +241,11 @@ const api = {
       const handler = (_event: Electron.IpcRendererEvent, payload: RecentSessionsChanged) => listener(payload);
       ipcRenderer.on('chat:recent-sessions-changed', handler);
       return () => ipcRenderer.removeListener('chat:recent-sessions-changed', handler);
+    },
+    onStatusChanged: (listener: () => void): (() => void) => {
+      const handler = () => listener();
+      ipcRenderer.on('chat:status-changed', handler);
+      return () => ipcRenderer.removeListener('chat:status-changed', handler);
     },
     workspaceFolders: (): Promise<WorkspaceFolder[]> => ipcRenderer.invoke('chat:workspace-folders'),
     prepareDroppedFiles: (paths: string[]): Promise<PreparedDropFiles> =>

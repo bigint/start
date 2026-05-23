@@ -3,6 +3,7 @@ import { AttachmentStack } from '@renderer/shared/composer/attachment-stack';
 import { GenerateButton } from '@renderer/shared/composer/generate-button';
 import { ComposerModelPicker } from '@renderer/shared/composer/model-picker';
 import type { ComposerProps } from '@renderer/shared/composer/types';
+import { ComposerWorkspacePicker } from '@renderer/shared/composer/workspace-picker';
 import { Finder, finderItemId } from '@renderer/shared/finder';
 import { activeFinderToken, commandMode, finderTokenPrefix } from '@renderer/shared/input';
 import { usePromptPlaceholder } from '@renderer/shared/placeholder';
@@ -27,12 +28,15 @@ export const Composer = ({
   onDraftChange,
   onSelectModel,
   previousTurn,
+  workspacePath,
   onOpenSettings,
   selectedModelKey,
   onRefillPrevious,
   onOpenAttachment,
   onRemoveAttachment,
-  onSelectThinkingLevel
+  onSelectWorkspace,
+  onSelectThinkingLevel,
+  onChooseWorkspaceDirectory
 }: ComposerProps) => {
   const isCommandMode = commandMode(draft);
   const promptInputRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
@@ -163,6 +167,13 @@ export const Composer = ({
         !overlay && hasTurns && 'bottom-4.5'
       )}
     >
+      {overlay && (
+        <ComposerWorkspacePicker
+          workspacePath={workspacePath}
+          onSelectWorkspace={onSelectWorkspace}
+          onChooseDirectory={onChooseWorkspaceDirectory}
+        />
+      )}
       <Finder
         items={filteredFinderItems}
         activePath={selectedFinderItem?.path}

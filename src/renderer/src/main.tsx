@@ -211,6 +211,19 @@ const App = () => {
     [selectThinkingLevel]
   );
 
+  const chooseWorkspaceFromComposer = useCallback(async () => {
+    const switched = await chooseWorkspaceDirectory();
+    if (surface === 'composer' && switched) void window.pi.app.showMain();
+  }, [chooseWorkspaceDirectory, surface]);
+
+  const selectWorkspaceFromComposer = useCallback(
+    async (path: string) => {
+      const switched = await switchWorkspace(path);
+      if (surface === 'composer' && switched) void window.pi.app.showMain();
+    },
+    [surface, switchWorkspace]
+  );
+
   const startNewSession = useCallback(() => {
     clearPendingAttachments();
     navigate({ name: 'chat' });
@@ -331,6 +344,7 @@ const App = () => {
             textareaRef={textareaRef}
             isGenerating={isGenerating}
             thinkingLevel={thinkingLevel}
+            workspacePath={workspacePath}
             overlay={surface === 'composer'}
             hasTurns={surface === 'main' && turns.length > 0}
             onRefillPrevious={refillPrevious}
@@ -340,6 +354,8 @@ const App = () => {
             onRemoveAttachment={removeAttachment}
             onSelectModel={selectModelFromComposer}
             onOpenSettings={showSettings}
+            onSelectWorkspace={selectWorkspaceFromComposer}
+            onChooseWorkspaceDirectory={chooseWorkspaceFromComposer}
             onSelectThinkingLevel={selectThinkingFromComposer}
           />
         </>

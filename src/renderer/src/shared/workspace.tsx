@@ -1,27 +1,11 @@
 import type { WorkspaceFolder } from '@preload/index';
 import { useWorkspace } from '@renderer/shared/use-workspace';
+import { WorkspaceMenu } from '@renderer/shared/workspace-menu';
 import { cachedWorkspaceFolders, loadWorkspaceFolders } from '@renderer/shared/workspace-folders';
-import { ChevronDownIcon, FolderIcon } from '@renderer/ui/icons';
-import { AppMenu, MenuPanel } from '@renderer/ui/menu';
+import { ChevronDownIcon } from '@renderer/ui/icons';
+import { AppMenu } from '@renderer/ui/menu';
 import { cn } from '@renderer/utils/cn';
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
-
-const WorkspaceFolderItem = ({
-  folder,
-  onSelectWorkspace
-}: {
-  folder: WorkspaceFolder;
-  onSelectWorkspace: (path: string) => void;
-}) => (
-  <AppMenu.Item
-    closeOnClick
-    onClick={() => onSelectWorkspace(folder.path)}
-    className="grid w-full gap-0.5 rounded-xl px-3 py-2 text-left text-sm leading-5 font-medium text-ink outline-0 select-none data-[highlighted]:bg-control"
-  >
-    <span class="truncate">{folder.name}</span>
-    <span class="truncate text-xs leading-4 font-normal text-soft">{folder.path}</span>
-  </AppMenu.Item>
-);
 
 export const Workspace = ({
   workspacePath,
@@ -94,19 +78,13 @@ export const Workspace = ({
             className="z-50"
             collisionPadding={12}
           >
-            <MenuPanel width="workspace">
-              {folders.map((folder) => (
-                <WorkspaceFolderItem key={folder.path} folder={folder} onSelectWorkspace={onSelectWorkspace} />
-              ))}
-              <AppMenu.Item
-                closeOnClick
-                onClick={onChooseDirectory}
-                className="grid w-full grid-cols-[auto_1fr] items-center gap-2 rounded-xl px-3 py-3 text-left text-sm leading-5 font-medium text-ink outline-0 select-none data-[highlighted]:bg-control"
-              >
-                <FolderIcon class="size-4.5" />
-                <span class="text-xs leading-5">Choose a directory</span>
-              </AppMenu.Item>
-            </MenuPanel>
+            <WorkspaceMenu
+              folders={folders}
+              panelWidth="workspace"
+              workspacePath={workspacePath}
+              onChooseDirectory={onChooseDirectory}
+              onSelectWorkspace={onSelectWorkspace}
+            />
           </AppMenu.Positioner>
         </AppMenu.Portal>
       </AppMenu.Root>
