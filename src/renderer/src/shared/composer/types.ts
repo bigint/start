@@ -6,6 +6,7 @@ export type ComposerProps = {
   onStop: () => void;
   onPaste: (event: ClipboardEvent) => void;
   onSubmit: () => void;
+  onCancel?: () => void;
   hasTurns: boolean;
   attachments: ImageAttachment[];
   models: ModelOption[];

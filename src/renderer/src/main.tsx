@@ -105,6 +105,11 @@ const App = () => {
     selectThinkingLevel
   } = useChat({ onShowChat: showChat, onShowSettings: showSettings, textareaRef });
 
+  const discardComposerDraft = useCallback(() => {
+    clearPendingAttachments();
+    setDraft('');
+  }, [clearPendingAttachments, setDraft]);
+
   const closeSettings = useCallback(() => {
     setSurface('main');
     navigate(routeForSession(activeSessionId));
@@ -129,6 +134,10 @@ const App = () => {
       textareaRef.current?.focus();
     });
   }, []);
+
+  useEffect(() => {
+    return window.pi.app.onDiscardComposer(discardComposerDraft);
+  }, [discardComposerDraft]);
 
   useEffect(() => {
     return window.pi.app.onSubmitComposer((prompt, incomingAttachments) => {
@@ -252,9 +261,11 @@ const App = () => {
     void send(pendingAttachments);
   }, [attachments, draft, send, setDraft, surface]);
 
-  const hideComposerOverlay = useCallback(() => {
-    if (surface === 'composer') void window.pi.app.hideComposer();
-  }, [surface]);
+  const discardComposerOverlay = useCallback(() => {
+    if (surface !== 'composer') return;
+    discardComposerDraft();
+    void window.pi.app.hideComposer();
+  }, [discardComposerDraft, surface]);
 
   const openAttachment = useCallback((path: string) => {
     void window.pi.app.openPath(path);
@@ -277,7 +288,7 @@ const App = () => {
       aria-label="start"
       onDrop={sessionViewActive ? fileHandlers.onDrop : undefined}
       onDragOver={sessionViewActive ? fileHandlers.onDragOver : undefined}
-      onMouseDown={hideComposerOverlay}
+      onMouseDown={surface === 'composer' ? discardComposerOverlay : undefined}
       onDragEnter={sessionViewActive ? fileHandlers.onDragEnter : undefined}
       onDragLeave={sessionViewActive ? fileHandlers.onDragLeave : undefined}
       class="relative block h-full min-h-screen w-full overflow-hidden bg-transparent"
@@ -315,6 +326,7 @@ const App = () => {
             onPaste={fileHandlers.onPaste}
             onStop={stopResponse}
             onSubmit={submitDraft}
+            onCancel={discardComposerOverlay}
             onDraftChange={setDraft}
             textareaRef={textareaRef}
             isGenerating={isGenerating}

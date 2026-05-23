@@ -12,6 +12,7 @@ export const AppMenu = Menu;
 export const MenuPanel = ({ children, width }: MenuPanelProps) => {
   return (
     <Menu.Popup
+      onMouseDown={(event: MouseEvent) => event.stopPropagation()}
       className={cn(
         'origin-bottom rounded-2xl bg-panel p-1 shadow-panel outline-0 transition-[opacity,transform] duration-100 ease-out data-[ending-style]:scale-[0.96] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.96] data-[starting-style]:opacity-0',
         width === 'provider' && 'w-44',

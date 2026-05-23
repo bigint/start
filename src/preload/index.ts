@@ -208,6 +208,11 @@ const api = {
       ipcRenderer.on('app:show-composer', handler);
       return () => ipcRenderer.removeListener('app:show-composer', handler);
     },
+    onDiscardComposer: (listener: () => void): (() => void) => {
+      const handler = () => listener();
+      ipcRenderer.on('app:discard-composer', handler);
+      return () => ipcRenderer.removeListener('app:discard-composer', handler);
+    },
     onFocusStateChanged: (listener: (state: AppFocusState) => void): (() => void) => {
       const handler = (_event: Electron.IpcRendererEvent, state: AppFocusState) => listener(state);
       ipcRenderer.on('app:focus-state-changed', handler);

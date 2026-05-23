@@ -18,6 +18,7 @@ export const Composer = ({
   onStop,
   onPaste,
   onSubmit,
+  onCancel,
   textareaRef,
   hasTurns,
   isGenerating,
@@ -120,15 +121,15 @@ export const Composer = ({
       return;
     }
 
-    if (event.key === 'Escape' && finderToken) {
+    if (event.key === 'Escape' && overlay) {
       event.preventDefault();
-      onDraftChange(draft.slice(0, finderToken.start));
+      onCancel?.();
       return;
     }
 
-    if (event.key === 'Escape' && overlay) {
+    if (event.key === 'Escape' && finderToken) {
       event.preventDefault();
-      void window.pi.app.hideComposer();
+      onDraftChange(draft.slice(0, finderToken.start));
       return;
     }
 
@@ -158,9 +159,8 @@ export const Composer = ({
       class={cn(
         'fixed inset-x-0 isolate mx-auto w-full max-w-3xl rounded-2xl px-5',
         centered && 'top-[calc(50%-28px)]',
-        !overlay && hasTurns && 'bottom-4.5',
-        overlay &&
-          "before:pointer-events-none before:absolute before:inset-x-10 before:-top-5 before:-bottom-5 before:z-10 before:animate-[composer-shortcut-smoke-in_220ms_cubic-bezier(0.16,1,0.3,1)_both] before:rounded-full before:bg-[radial-gradient(ellipse_at_22%_42%,var(--composer-shortcut-smoke-warm),transparent_48%),radial-gradient(ellipse_at_78%_36%,var(--composer-shortcut-smoke-cool),transparent_52%),radial-gradient(ellipse_at_50%_78%,var(--composer-shortcut-smoke-mist),transparent_58%)] before:blur-2xl before:content-[''] after:pointer-events-none after:absolute after:inset-x-20 after:top-1 after:z-20 after:h-12 after:animate-[composer-shortcut-smoke-in_260ms_cubic-bezier(0.16,1,0.3,1)_both] after:rounded-full after:bg-[linear-gradient(90deg,transparent,var(--composer-shortcut-smoke-sheen),transparent)] after:blur-md after:content-['']"
+        overlay && 'composer-floating-shell',
+        !overlay && hasTurns && 'bottom-4.5'
       )}
     >
       <Finder
@@ -174,11 +174,9 @@ export const Composer = ({
         class={cn(
           'relative z-30 overflow-hidden border-0 bg-composer [-webkit-app-region:no-drag] [&_*]:[-webkit-app-region:no-drag]',
           layered ? 'rounded-t-2xl rounded-b-3xl' : 'rounded-3xl',
+          overlay && 'composer-floating-field',
           finderAttached && !isCommandMode && 'shadow-[0_0_0_1px_transparent,0_16px_22px_-18px_oklch(0%_0_0/0.16)]',
-          !finderAttached && !overlay && 'shadow-shell',
-          !finderAttached &&
-            overlay &&
-            'shadow-[0_0_0_1px_var(--composer-shortcut-field-ring),0_20px_46px_-28px_var(--composer-shortcut-field-shadow),inset_0_1px_0_var(--composer-shortcut-field-highlight)]'
+          !finderAttached && !overlay && 'shadow-shell'
         )}
         onMouseDown={(event) => {
           if (overlay) event.stopPropagation();

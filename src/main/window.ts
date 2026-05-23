@@ -10,6 +10,7 @@ const composerIdleDestroyMs = 120000;
 let mainWindow: BrowserWindow | null = null;
 let composerWindow: BrowserWindow | null = null;
 let composerVisible = false;
+let composerOpenedFromStart = false;
 let composerDestroyTimer: NodeJS.Timeout | undefined;
 
 const openExternalUrl = (url: string) => {
@@ -214,19 +215,28 @@ export const sendToRendererWindows = (channel: string, ...args: unknown[]) => {
   }
 };
 
-export const hideComposerWindow = () => {
+type HideComposerWindowOptions = {
+  discard?: boolean;
+  keepAppActive?: boolean;
+};
+
+export const hideComposerWindow = ({ discard = true, keepAppActive = false }: HideComposerWindowOptions = {}) => {
   if (!composerWindow || composerWindow.isDestroyed() || !composerVisible) return;
 
+  const shouldHideApp = isMac && !keepAppActive && !composerOpenedFromStart;
   composerVisible = false;
+  composerOpenedFromStart = false;
+  if (discard) composerWindow.webContents.send('app:discard-composer');
   composerWindow.setOpacity(0);
   composerWindow.setIgnoreMouseEvents(true);
-  composerWindow.blur();
   composerWindow.hide();
+  if (shouldHideApp) app.hide();
   scheduleComposerDestroy();
 };
 
 export const showComposerWindow = () => {
   clearComposerDestroyTimer();
+  composerOpenedFromStart = BrowserWindow.getFocusedWindow() === mainWindow;
   const window = createComposerWindow();
   composerVisible = true;
   window.setOpacity(0);
@@ -238,8 +248,17 @@ export const showComposerWindow = () => {
   window.webContents.send('app:show-composer');
 };
 
+export const toggleComposerWindow = () => {
+  if (composerVisible) {
+    hideComposerWindow();
+    return;
+  }
+
+  showComposerWindow();
+};
+
 export const submitComposerToMainWindow = (prompt: string, attachments: unknown[] = []) => {
-  hideComposerWindow();
+  hideComposerWindow({ discard: false, keepAppActive: true });
   sendToMainWindow('app:submit-composer', prompt, attachments);
 };
 

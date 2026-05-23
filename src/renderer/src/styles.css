@@ -30,13 +30,13 @@
   --drop-corner-indigo: oklch(62% 0.055 268 / 0.24);
   --drop-corner-sakura: oklch(74% 0.055 23 / 0.22);
   --drop-corner-sakura-soft: oklch(78% 0.032 23 / 0.14);
-  --composer-shortcut-field-highlight: oklch(99.2% 0.003 264 / 0.72);
-  --composer-shortcut-field-ring: oklch(58% 0.04 268 / 0.12);
-  --composer-shortcut-field-shadow: oklch(32% 0.02 268 / 0.28);
-  --composer-shortcut-smoke-cool: oklch(70% 0.05 268 / 0.24);
-  --composer-shortcut-smoke-mist: oklch(82% 0.015 264 / 0.2);
-  --composer-shortcut-smoke-sheen: oklch(88% 0.018 264 / 0.24);
-  --composer-shortcut-smoke-warm: oklch(76% 0.045 23 / 0.2);
+  --composer-floating-field-highlight: oklch(99.4% 0.004 264 / 0.82);
+  --composer-floating-field-ring: oklch(60% 0.05 268 / 0.2);
+  --composer-floating-field-shadow: oklch(30% 0.025 268 / 0.38);
+  --composer-floating-halo-indigo: oklch(67% 0.07 268 / 0.38);
+  --composer-floating-halo-mist: oklch(88% 0.02 264 / 0.36);
+  --composer-floating-halo-rose: oklch(75% 0.06 23 / 0.32);
+  --composer-floating-sheen: oklch(98% 0.006 264 / 0.92);
   font-synthesis: none;
   text-rendering: optimizeSpeed;
   -webkit-font-smoothing: antialiased;
@@ -50,13 +50,13 @@
     --drop-corner-indigo: oklch(67% 0.05 268 / 0.3);
     --drop-corner-sakura: oklch(72% 0.048 23 / 0.17);
     --drop-corner-sakura-soft: oklch(76% 0.03 23 / 0.12);
-    --composer-shortcut-field-highlight: oklch(92% 0.008 268 / 0.06);
-    --composer-shortcut-field-ring: oklch(76% 0.035 268 / 0.14);
-    --composer-shortcut-field-shadow: oklch(9% 0.015 285 / 0.58);
-    --composer-shortcut-smoke-cool: oklch(67% 0.05 268 / 0.3);
-    --composer-shortcut-smoke-mist: oklch(70% 0.016 285 / 0.12);
-    --composer-shortcut-smoke-sheen: oklch(82% 0.02 268 / 0.16);
-    --composer-shortcut-smoke-warm: oklch(72% 0.048 23 / 0.18);
+    --composer-floating-field-highlight: oklch(95% 0.01 268 / 0.12);
+    --composer-floating-field-ring: oklch(78% 0.04 268 / 0.22);
+    --composer-floating-field-shadow: oklch(4% 0.012 285 / 0.72);
+    --composer-floating-halo-indigo: oklch(68% 0.07 268 / 0.42);
+    --composer-floating-halo-mist: oklch(74% 0.02 285 / 0.2);
+    --composer-floating-halo-rose: oklch(72% 0.055 23 / 0.24);
+    --composer-floating-sheen: oklch(92% 0.02 268 / 0.2);
     --color-panel: oklch(15% 0.004 285);
     --color-muted: oklch(26% 0.006 285);
     --color-line: oklch(100% 0 0 / 0.06);
@@ -101,15 +101,90 @@ body {
   }
 }
 
-@keyframes composer-shortcut-smoke-in {
+.composer-floating-shell::before,
+.composer-floating-shell::after {
+  pointer-events: none;
+  position: absolute;
+  border-radius: 9999px;
+  content: "";
+}
+
+.composer-floating-shell::before {
+  inset: -5.5rem -3.5rem -4.75rem;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse at 20% 42%, var(--composer-floating-halo-rose), transparent 48%),
+    radial-gradient(ellipse at 80% 36%, var(--composer-floating-halo-indigo), transparent 52%),
+    radial-gradient(ellipse at 50% 82%, var(--composer-floating-halo-mist), transparent 58%);
+  filter: blur(28px);
+  opacity: 0.95;
+  animation: composer-floating-halo-in 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.composer-floating-shell::after {
+  inset: -1.2rem 2.75rem -1.8rem;
+  z-index: 20;
+  background:
+    linear-gradient(90deg, transparent, var(--composer-floating-sheen), transparent),
+    radial-gradient(ellipse at 50% 40%, var(--composer-floating-halo-mist), transparent 58%);
+  filter: blur(12px);
+  opacity: 0.78;
+  animation: composer-floating-sheen-in 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.composer-floating-field {
+  box-shadow:
+    0 0 0 1px var(--composer-floating-field-ring),
+    0 26px 72px -30px var(--composer-floating-field-shadow),
+    0 10px 32px -22px var(--composer-floating-halo-indigo),
+    inset 0 1px 0 var(--composer-floating-field-highlight);
+  animation: composer-floating-field-in 180ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.composer-floating-field::before {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    linear-gradient(180deg, var(--composer-floating-sheen), transparent 42%),
+    radial-gradient(ellipse at 50% -12%, var(--composer-floating-halo-mist), transparent 55%);
+  content: "";
+}
+
+@keyframes composer-floating-field-in {
   from {
     opacity: 0;
-    transform: scale(0.96);
+    transform: translate3d(0, 6px, 0) scale(0.985);
   }
 
   to {
     opacity: 1;
-    transform: scale(1);
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes composer-floating-halo-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0) scale(0.88);
+  }
+
+  to {
+    opacity: 0.95;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes composer-floating-sheen-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 5px, 0) scale(0.94);
+  }
+
+  to {
+    opacity: 0.78;
+    transform: translate3d(0, 0, 0) scale(1);
   }
 }
 

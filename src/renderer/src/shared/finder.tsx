@@ -35,6 +35,7 @@ export const Finder = ({ activePath, items, onPresentChange, onSelect, visible }
       id="composer-finder"
       role="listbox"
       tabIndex={-1}
+      onMouseDown={(event) => event.stopPropagation()}
       class="absolute right-24 bottom-[calc(100%-0.125rem)] left-24 z-20 origin-bottom overflow-visible rounded-t-2xl bg-composer p-1 opacity-100 transition-[opacity,transform] duration-150 ease-out will-change-transform [-webkit-app-region:no-drag]"
     >
       <div class="absolute inset-0 -z-10 rounded-t-2xl bg-composer shadow-shell" />

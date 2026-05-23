@@ -11,7 +11,7 @@ import {
   hideComposerWindow,
   sendToRendererWindows,
   sendToMainWindow,
-  showComposerWindow,
+  toggleComposerWindow,
   submitComposerToMainWindow
 } from '@main/window';
 import { getWorkspace } from '@main/workspace';
@@ -55,7 +55,7 @@ const startNewSession = async () => {
 
 const registerComposerShortcut = (accelerator: string) => {
   globalShortcut.unregisterAll();
-  return globalShortcut.register(accelerator, showComposerWindow);
+  return globalShortcut.register(accelerator, toggleComposerWindow);
 };
 
 const menuActions = () => ({
@@ -100,7 +100,7 @@ app.whenReady().then(async () => {
     hideComposerWindow();
   });
   ipcMain.handle('app:open-settings', () => {
-    hideComposerWindow();
+    hideComposerWindow({ keepAppActive: true });
     showSettings();
   });
   ipcMain.handle('app:open-path', (_event, path: string) => shell.openPath(path));
