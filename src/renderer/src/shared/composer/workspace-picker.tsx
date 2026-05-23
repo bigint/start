@@ -52,7 +52,7 @@ export const ComposerWorkspacePicker = ({
           <AppMenu.Trigger
             aria-label="Workspace folders"
             onMouseDown={(event: MouseEvent) => event.stopPropagation()}
-            className="composer-floating-field relative grid size-11.5 place-items-center overflow-hidden rounded-full border-0 bg-composer p-0.5 text-ink outline-0 transition-transform duration-150 ease-out select-none hover:scale-[0.98] focus-visible:scale-[0.98]"
+            className="composer-floating-field relative grid size-11.5 place-items-center overflow-hidden rounded-full border-0 bg-composer p-1.25 text-ink outline-0 transition-transform duration-150 ease-out select-none hover:scale-[0.98] focus-visible:scale-[0.98]"
           >
             <img
               alt=""
