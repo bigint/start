@@ -188,11 +188,11 @@ const scanIconCandidates = async (root: string) => {
 };
 
 const svgDataUrl = async (filePath: string) => {
-  const details = await stat(filePath).catch(() => undefined);
-  if (!details || details.size > maxSvgBytes) return undefined;
+  const details = await stat(filePath).catch(() => {});
+  if (!details || details.size > maxSvgBytes) return;
 
   const source = await readFile(filePath, 'utf8').catch(() => '');
-  if (!source.trimStart().startsWith('<svg')) return undefined;
+  if (!source.trimStart().startsWith('<svg')) return;
   return `data:image/svg+xml;base64,${Buffer.from(source).toString('base64')}`;
 };
 
@@ -200,14 +200,14 @@ const imageDataUrl = async (filePath: string) => {
   const extension = path.extname(filePath).toLowerCase();
   if (extension === '.svg') return svgDataUrl(filePath);
 
-  const details = await stat(filePath).catch(() => undefined);
-  if (!details || details.size > maxIconBytes) return undefined;
+  const details = await stat(filePath).catch(() => {});
+  if (!details || details.size > maxIconBytes) return;
 
   const image = nativeImage.createFromPath(filePath);
-  if (image.isEmpty()) return undefined;
+  if (image.isEmpty()) return;
 
   const size = image.getSize();
-  if (size.width < 24 || size.height < 24) return undefined;
+  if (size.width < 24 || size.height < 24) return;
 
   const scale = Math.min(1, cachedIconDimension / Math.max(size.width, size.height));
   const resized = image.resize({
@@ -215,7 +215,7 @@ const imageDataUrl = async (filePath: string) => {
     width: Math.max(1, Math.round(size.width * scale)),
     height: Math.max(1, Math.round(size.height * scale))
   });
-  if (resized.isEmpty()) return undefined;
+  if (resized.isEmpty()) return;
 
   return `data:image/png;base64,${resized.toPNG().toString('base64')}`;
 };

@@ -57,7 +57,7 @@ const readPosition = (): ToolbarPosition => {
 
 const readRendererMemory = (): RendererMemory | undefined => {
   const memory = (performance as PerformanceWithMemory).memory;
-  if (!memory) return undefined;
+  if (!memory) return;
 
   return {
     jsHeapLimitMb: bytesToMegabytes(memory.jsHeapSizeLimit),

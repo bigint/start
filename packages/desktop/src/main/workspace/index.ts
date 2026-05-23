@@ -1,12 +1,13 @@
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { getGitBranch, isGitRepository } from '@main/git';
+import { type GitChangeSummary, getGitBranch, getGitChangeSummary, isGitRepository } from '@main/git';
 import { startCacheDir } from '@main/storage';
 import { generatedWorkspaceIconDataUrl, workspaceIconDataUrl } from '@main/workspace/icons';
 
 export type WorkspaceInfo = {
   branchName?: string;
   folderName: string;
+  git?: GitChangeSummary;
   iconDataUrl: string;
   path: string;
 };
@@ -31,17 +32,20 @@ const workspaceChangeListeners = new Set<WorkspaceChangeListener>();
 let workspaceCacheLoaded = false;
 let workspaceCacheWrite = Promise.resolve();
 
-const cleanString = (value: unknown) => (typeof value === 'string' && value.trim() ? value.trim() : undefined);
+const cleanString = (value: unknown) => {
+  if (typeof value === 'string' && value.trim()) return value.trim();
+  return;
+};
 
 const cleanCachedWorkspace = (value: unknown): CachedWorkspaceInfo | undefined => {
-  if (!value || typeof value !== 'object') return undefined;
+  if (!value || typeof value !== 'object') return;
 
   const workspace = value as Partial<CachedWorkspaceInfo>;
   const folderName = cleanString(workspace.folderName);
   const iconDataUrl = cleanString(workspace.iconDataUrl);
   const workspacePath = cleanString(workspace.path);
   const branchName = cleanString(workspace.branchName);
-  if (!folderName || !iconDataUrl || !workspacePath) return undefined;
+  if (!folderName || !iconDataUrl || !workspacePath) return;
 
   return {
     folderName,
@@ -56,9 +60,11 @@ const workspaceInfo = (
   cwd: string,
   folderName: string,
   iconDataUrl: string,
-  branchName: string | undefined
+  branchName?: string,
+  git?: GitChangeSummary
 ): WorkspaceInfo => ({
   ...(branchName ? { branchName } : {}),
+  ...(git ? { git } : {}),
   folderName,
   iconDataUrl,
   path: cwd
@@ -71,18 +77,28 @@ const cachedWorkspaceInfo = (workspace: WorkspaceInfo): CachedWorkspaceInfo => (
 
 const visibleWorkspaceInfo = ({ updatedAt: _updatedAt, ...workspace }: CachedWorkspaceInfo): WorkspaceInfo => workspace;
 
+const sameGitChangeSummary = (first: GitChangeSummary | undefined, second: GitChangeSummary | undefined) => {
+  if (!first || !second) return first === second;
+  return (
+    first.filesChanged === second.filesChanged &&
+    first.insertions === second.insertions &&
+    first.deletions === second.deletions
+  );
+};
+
 const sameWorkspaceInfo = (first: WorkspaceInfo | undefined, second: WorkspaceInfo) => {
   if (!first) return false;
   return (
     first.folderName === second.folderName &&
     first.iconDataUrl === second.iconDataUrl &&
     first.path === second.path &&
-    first.branchName === second.branchName
+    first.branchName === second.branchName &&
+    sameGitChangeSummary(first.git, second.git)
   );
 };
 
 const workspaceExists = async (cwd: string) => {
-  const details = await stat(cwd).catch(() => undefined);
+  const details = await stat(cwd).catch(() => {});
   return Boolean(details?.isDirectory());
 };
 
@@ -109,7 +125,7 @@ const saveWorkspaceCache = () => {
       await mkdir(startCacheDir(), { recursive: true });
       await writeFile(workspaceCachePath(), `${JSON.stringify(payload)}\n`, 'utf8');
     })
-    .catch(() => undefined);
+    .catch(() => {});
 };
 
 const loadWorkspaceCache = async () => {
@@ -141,13 +157,22 @@ const storeWorkspace = (workspace: WorkspaceInfo) => {
 const readWorkspace = async (cwd: string): Promise<WorkspaceInfo> => {
   const folderName = path.basename(cwd) || cwd;
   if (!(await workspaceExists(cwd))) {
-    return workspaceInfo(cwd, folderName, generatedWorkspaceIconDataUrl(folderName), undefined);
+    return workspaceInfo(cwd, folderName, generatedWorkspaceIconDataUrl(folderName));
   }
 
   const isGitWorkspace = await isGitRepository(cwd);
-  const branchName = isGitWorkspace ? await getGitBranch(cwd) : undefined;
-  const iconDataUrl = await workspaceIconDataUrl(cwd, folderName);
-  return workspaceInfo(cwd, folderName, iconDataUrl, branchName);
+  const iconDataUrlPromise = workspaceIconDataUrl(cwd, folderName);
+  let branchName: string | undefined;
+  let git: GitChangeSummary | undefined;
+
+  if (isGitWorkspace) {
+    [branchName, git] = await Promise.all([getGitBranch(cwd), getGitChangeSummary(cwd)]);
+  }
+
+  const iconDataUrl = await iconDataUrlPromise;
+  let gitSummary: GitChangeSummary | undefined;
+  if (isGitWorkspace) gitSummary = git ?? { filesChanged: 0, insertions: 0, deletions: 0 };
+  return workspaceInfo(cwd, folderName, iconDataUrl, branchName, gitSummary);
 };
 
 const refreshWorkspace = (cwd: string, notifyChanged: boolean) => {
@@ -181,7 +206,7 @@ export const getCachedWorkspace = async (cwd = process.cwd()) => {
 
   const cached = workspaceCache.get(key);
   if (cached && (await workspaceExists(key))) return visibleWorkspaceInfo(cached);
-  return undefined;
+  return;
 };
 
 export const getWorkspace = async (cwd = process.cwd()) => {

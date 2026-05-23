@@ -31,6 +31,21 @@ const loadRenderer = (window: BrowserWindow, surface: 'composer' | 'main') => {
 
 const activeDisplayWorkArea = () => screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea;
 
+const fitComposerWindowToActiveDisplay = (window: BrowserWindow) => {
+  const nextBounds = activeDisplayWorkArea();
+  const currentBounds = window.getBounds();
+  if (
+    currentBounds.x === nextBounds.x &&
+    currentBounds.y === nextBounds.y &&
+    currentBounds.width === nextBounds.width &&
+    currentBounds.height === nextBounds.height
+  ) {
+    return;
+  }
+
+  window.setBounds(nextBounds, false);
+};
+
 export const createMainWindow = (): BrowserWindow => {
   if (mainWindow && !mainWindow.isDestroyed()) return mainWindow;
 
@@ -89,6 +104,7 @@ export const createMainWindow = (): BrowserWindow => {
 
   window.on('closed', () => {
     if (mainWindow === window) mainWindow = null;
+    if (!isMac) app.quit();
   });
 
   loadRenderer(window, 'main');
@@ -99,7 +115,7 @@ export const createMainWindow = (): BrowserWindow => {
 export const createComposerWindow = (): BrowserWindow => {
   if (composerWindow && !composerWindow.isDestroyed()) return composerWindow;
 
-  const window = new BrowserWindow({
+  const options: BrowserWindowConstructorOptions = {
     ...activeDisplayWorkArea(),
     show: false,
     title: appName,
@@ -113,6 +129,7 @@ export const createComposerWindow = (): BrowserWindow => {
     alwaysOnTop: true,
     backgroundColor: '#00000000',
     opacity: 0,
+    focusable: false,
     hasShadow: false,
     skipTaskbar: true,
     webPreferences: {
@@ -123,22 +140,25 @@ export const createComposerWindow = (): BrowserWindow => {
       webSecurity: true,
       spellcheck: false,
       devTools: !app.isPackaged,
-      backgroundThrottling: true
+      backgroundThrottling: false
     }
-  });
+  };
+
+  if (isMac) {
+    options.type = 'panel';
+  }
+
+  const window = new BrowserWindow(options);
 
   composerWindow = window;
   window.setBackgroundColor('#00000000');
-  if (isMac) {
-    window.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
-  }
 
   window.once('ready-to-show', () => {
     if (!composerVisible) window.setIgnoreMouseEvents(true);
   });
 
   window.on('blur', () => {
-    if (composerBlurSuppressionDepth === 0) hideComposerWindow();
+    if (composerBlurSuppressionDepth === 0) requestHideComposerWindow();
   });
 
   window.on('closed', () => {
@@ -213,32 +233,61 @@ type HideComposerWindowOptions = {
 export const hideComposerWindow = ({ discard = true, keepAppActive = false }: HideComposerWindowOptions = {}) => {
   if (!composerWindow || composerWindow.isDestroyed() || !composerVisible) return;
 
-  const shouldHideApp = isMac && !keepAppActive && !composerOpenedFromStart;
+  const mainWindowVisible = Boolean(mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible());
+  const shouldHideApp = isMac && !keepAppActive && !composerOpenedFromStart && !mainWindowVisible;
   composerVisible = false;
   composerOpenedFromStart = false;
   if (discard) composerWindow.webContents.send('app:discard-composer');
   composerWindow.setOpacity(0);
+  composerWindow.setFocusable(false);
   composerWindow.setIgnoreMouseEvents(true);
   composerWindow.hide();
   if (shouldHideApp) app.hide();
 };
 
+export const requestHideComposerWindow = () => {
+  if (!composerWindow || composerWindow.isDestroyed() || !composerVisible) return;
+
+  if (composerWindow.webContents.isLoading()) {
+    hideComposerWindow();
+    return;
+  }
+
+  composerWindow.webContents.send('app:hide-composer-request');
+};
+
 export const showComposerWindow = () => {
-  composerOpenedFromStart = BrowserWindow.getFocusedWindow() === mainWindow;
+  composerOpenedFromStart = app.isActive();
   const window = createComposerWindow();
+  const sendShowComposer = () => {
+    if (composerVisible && composerWindow === window && !window.isDestroyed())
+      window.webContents.send('app:show-composer');
+  };
+
   composerVisible = true;
   window.setOpacity(0);
-  window.setBounds(activeDisplayWorkArea(), false);
+  window.setFocusable(true);
+  fitComposerWindowToActiveDisplay(window);
   window.setIgnoreMouseEvents(false);
-  window.show();
+  if (isMac) {
+    window.showInactive();
+  } else {
+    window.show();
+  }
   window.focus();
+  window.webContents.focus();
   window.setOpacity(1);
-  window.webContents.send('app:show-composer');
+  if (window.webContents.isLoading()) {
+    window.webContents.once('did-finish-load', sendShowComposer);
+    return;
+  }
+
+  sendShowComposer();
 };
 
 export const toggleComposerWindow = () => {
   if (composerVisible) {
-    hideComposerWindow();
+    requestHideComposerWindow();
     return;
   }
 

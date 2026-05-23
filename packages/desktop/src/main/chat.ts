@@ -97,8 +97,8 @@ export class ChatService {
 
   async getModels(): Promise<{
     models: ModelOption[];
-    selectedModelKey: string | undefined;
-    error: string | undefined;
+    error?: string;
+    selectedModelKey?: string;
   }> {
     this.refreshAuth();
     const available = this.getPickerModels();
@@ -114,10 +114,12 @@ export class ChatService {
     }));
     const selected = this.pickModel();
 
+    const error = models.length === 0 ? this.modelRegistry.getError() : '';
+
     return {
       models,
-      selectedModelKey: selected ? modelKey(selected) : undefined,
-      error: models.length === 0 ? this.modelRegistry.getError() : undefined
+      ...(error ? { error } : {}),
+      ...(selected ? { selectedModelKey: modelKey(selected) } : {})
     };
   }
 
@@ -447,7 +449,8 @@ export class ChatService {
           toolArgs.set(event.toolCallId, event.args);
         }
 
-        const previousToolArgs = 'toolCallId' in event ? toolArgs.get(event.toolCallId) : undefined;
+        let previousToolArgs: unknown;
+        if ('toolCallId' in event) previousToolArgs = toolArgs.get(event.toolCallId);
         const eventContext = previousToolArgs ? { toolArgs: previousToolArgs } : {};
         this.emitEvent(webContents, chatEvent(event, eventContext));
         if (event.type === 'tool_execution_end') toolArgs.delete(event.toolCallId);
@@ -657,7 +660,8 @@ export class ChatService {
 
   private pickModel() {
     const available = this.getPickerModels();
-    const selected = this.selectedModelKey ? this.findModelByKey(this.selectedModelKey) : undefined;
+    let selected: ReturnType<typeof this.findModelByKey>;
+    if (this.selectedModelKey) selected = this.findModelByKey(this.selectedModelKey);
     if (selected) return selected;
 
     const model = available[0];
@@ -684,7 +688,7 @@ export class ChatService {
   }
 
   private findModelByKey(selectedModelKey: string) {
-    return this.modelRegistry.getAvailable().find((model) => modelKey(model) === selectedModelKey) ?? undefined;
+    return this.modelRegistry.getAvailable().find((model) => modelKey(model) === selectedModelKey);
   }
 
   private providerAuthStatus(key: 'anthropic' | 'openai', name: string, hasModels: boolean): ProviderAuthStatus {

@@ -1,7 +1,8 @@
 import { useAppFocusState } from '@renderer/shared/use-app-focus-state';
 
+const defaultPromptPlaceholder = 'Ask to plan or work on something';
 const emptyPromptPlaceholders = [
-  'Ask to plan or work on something',
+  defaultPromptPlaceholder,
   'Type @ to attach workspace files',
   'Type ! to run a shell command',
   'Type ~/ to attach files from home'
@@ -17,7 +18,7 @@ type PromptPlaceholderOptions = {
 export const promptPlaceholder = (hasTurns: boolean, isCommandMode: boolean, index = 0) => {
   if (isCommandMode) return 'Run a shell command';
   if (hasTurns) return 'Ask for follow-up changes';
-  return emptyPromptPlaceholders[index % emptyPromptPlaceholders.length] ?? emptyPromptPlaceholders[0];
+  return emptyPromptPlaceholders[index % emptyPromptPlaceholders.length] ?? defaultPromptPlaceholder;
 };
 
 export const usePromptPlaceholder = ({ centered, draft, hasTurns, isCommandMode }: PromptPlaceholderOptions) => {

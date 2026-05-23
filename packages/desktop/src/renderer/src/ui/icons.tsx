@@ -42,6 +42,25 @@ export const ChevronDownIcon = (props: IconProps) => (
   </svg>
 );
 
+export const CycleVerticalIcon = ({ strokeWidth = 1.5, ...props }: IconProps & { strokeWidth?: number }) => (
+  <svg aria-hidden="true" fill="none" viewBox="0 0 24 24" {...props}>
+    <path
+      d="M8 9L11.1161 5.8839C11.6043 5.3957 12.3957 5.3957 12.8839 5.8839L16 9"
+      stroke="currentColor"
+      stroke-width={strokeWidth}
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+    <path
+      d="M16 15L12.8839 18.1161C12.3957 18.6043 11.6043 18.6043 11.1161 18.1161L8 15"
+      stroke="currentColor"
+      stroke-width={strokeWidth}
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+  </svg>
+);
+
 export const AnthropicIcon = (props: IconProps) => (
   <svg aria-hidden="true" fill="none" viewBox="0 0 24 24" {...props}>
     <path

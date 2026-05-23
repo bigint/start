@@ -13,9 +13,12 @@ export type ComposerProps = {
   modelsLoaded: boolean;
   isGenerating: boolean;
   previousTurn: string;
+  exiting?: boolean;
   overlay?: boolean;
+  revealKey?: number;
   workspacePath: string;
   thinkingLevel: EffortLevel;
+  onExitComplete: () => void;
   onRefillPrevious: () => void;
   selectedModelKey: string;
   onDraftChange: (value: string) => void;
@@ -26,5 +29,5 @@ export type ComposerProps = {
   onChooseWorkspaceDirectory: () => void;
   onSelectWorkspace: (path: string) => void;
   onSelectThinkingLevel: (level: EffortLevel) => void;
-  textareaRef: RefObject<HTMLTextAreaElement | HTMLInputElement>;
+  textareaRef: RefObject<HTMLTextAreaElement>;
 };

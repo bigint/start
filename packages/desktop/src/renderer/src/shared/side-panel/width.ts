@@ -35,9 +35,10 @@ export const getResizeCursor = ({ canCollapse, maxWidth, minWidth, width }: Resi
 export const readStoredSidePanelWidth = () => {
   try {
     const width = Number(window.localStorage.getItem(sidePanelWidthStorageKey));
-    return Number.isFinite(width) && width > 0 ? width : undefined;
+    if (Number.isFinite(width) && width > 0) return width;
+    return;
   } catch {
-    return undefined;
+    return;
   }
 };
 

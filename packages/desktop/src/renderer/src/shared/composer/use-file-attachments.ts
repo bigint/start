@@ -60,7 +60,7 @@ export const useFileAttachments = ({
 }: {
   enabled: boolean;
   setDraft: DraftSetter;
-  textareaRef: RefObject<HTMLTextAreaElement | HTMLInputElement>;
+  textareaRef: RefObject<HTMLTextAreaElement>;
   setAttachments: AttachmentSetter;
 }) => {
   const dragDepthRef = useRef(0);

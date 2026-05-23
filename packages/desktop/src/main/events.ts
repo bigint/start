@@ -34,7 +34,7 @@ const streamDetail = (event: Extract<AgentSessionEvent, { type: 'message_update'
     return withDetail(errorEvent('message-error', 'Response stopped'), update.error.errorMessage ?? update.reason);
   if (update.type === 'done' && update.reason === 'length')
     return metadataEvent('message-limit', 'Reached length limit');
-  if (update.type !== 'toolcall_end') return undefined;
+  if (update.type !== 'toolcall_end') return;
 
   return toolEventDetail({
     state: 'active',
@@ -77,7 +77,7 @@ export const chatEvent = (event: AgentSessionEvent, context: ChatEventContext = 
       });
     case 'queue_update': {
       const queuedCount = event.steering.length + event.followUp.length;
-      if (queuedCount === 0) return undefined;
+      if (queuedCount === 0) return;
 
       const result = metadataEvent('queue', 'Queued follow-up work', 'queued');
       result.detail = `${countLabel(event.steering.length, 'steer')}, ${countLabel(event.followUp.length, 'follow-up')}`;
@@ -117,6 +117,6 @@ export const chatEvent = (event: AgentSessionEvent, context: ChatEventContext = 
     case 'message_start':
     case 'turn_end':
     case 'turn_start':
-      return undefined;
+      return;
   }
 };

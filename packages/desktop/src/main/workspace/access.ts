@@ -20,7 +20,7 @@ const containsPath = (parentPath: string, workspacePath: string) => {
 
 const bookmarkForPath = (workspacePath: string) => {
   const bookmarks = readStartState().workspaceBookmarks;
-  if (!bookmarks) return undefined;
+  if (!bookmarks) return;
 
   return Object.entries(bookmarks)
     .filter(([bookmarkPath]) => containsPath(bookmarkPath, workspacePath))

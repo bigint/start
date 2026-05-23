@@ -29,12 +29,12 @@ export const useFinderItems = (token: FinderToken | undefined) => {
     window.pi.app
       .listRootItems('', 'workspace')
       .then((rootItems) => setFinderItemsCache('workspace:', rootItems))
-      .catch(() => undefined);
+      .catch(() => {});
 
     window.pi.app
       .listRootItems('', 'root')
       .then((rootItems) => setFinderItemsCache('root:', rootItems))
-      .catch(() => undefined);
+      .catch(() => {});
   }, []);
 
   useEffect(() => {

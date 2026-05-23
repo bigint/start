@@ -2,6 +2,7 @@ import type { RootItem } from '@preload/index';
 import { AttachmentStack } from '@renderer/shared/composer/attachment-stack';
 import { GenerateButton } from '@renderer/shared/composer/generate-button';
 import { ComposerModelPicker } from '@renderer/shared/composer/model-picker';
+import { PromptControl } from '@renderer/shared/composer/prompt-control';
 import type { ComposerProps } from '@renderer/shared/composer/types';
 import { ComposerWorkspacePicker } from '@renderer/shared/composer/workspace-picker';
 import { Finder, finderItemId } from '@renderer/shared/finder';
@@ -24,12 +25,15 @@ export const Composer = ({
   hasTurns,
   isGenerating,
   thinkingLevel,
+  exiting = false,
   overlay = false,
+  revealKey = 0,
   onDraftChange,
   onSelectModel,
   previousTurn,
   workspacePath,
   onOpenSettings,
+  onExitComplete,
   selectedModelKey,
   onRefillPrevious,
   onOpenAttachment,
@@ -39,7 +43,8 @@ export const Composer = ({
   onChooseWorkspaceDirectory
 }: ComposerProps) => {
   const isCommandMode = commandMode(draft);
-  const promptInputRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
+  const singleLine = overlay;
+  const promptInputRef = useRef<HTMLTextAreaElement | null>(null);
   const [finderPresent, setFinderPresent] = useState(false);
   const [isMultiline, setIsMultiline] = useState(false);
   const [activeFinderIndex, setActiveFinderIndex] = useState(0);
@@ -52,12 +57,12 @@ export const Composer = ({
     setIsMultiline(hasText && (element.scrollHeight > lineHeight * 1.6 || value.includes('\n')));
   }, []);
   const setPromptInputRef = useCallback(
-    (element: HTMLInputElement | HTMLTextAreaElement | null) => {
+    (element: HTMLTextAreaElement | null) => {
       promptInputRef.current = element;
       textareaRef.current = element;
-      if (element instanceof HTMLTextAreaElement) updateTextareaLayout(element, draft);
+      if (element && !singleLine) updateTextareaLayout(element, draft);
     },
-    [draft, textareaRef, updateTextareaLayout]
+    [draft, singleLine, textareaRef, updateTextareaLayout]
   );
 
   const finderToken = useMemo(() => activeFinderToken(draft), [draft]);
@@ -72,7 +77,7 @@ export const Composer = ({
   const finderAttached = finderPresent || finderVisible;
   const selectedFinderItem = filteredFinderItems[activeFinderIndex] ?? filteredFinderItems[0];
   const centered = overlay || !hasTurns;
-  const layered = isMultiline || hasAttachments;
+  const layered = hasAttachments || (!singleLine && isMultiline);
   const promptPlaceholder = usePromptPlaceholder({ centered, draft, hasTurns, isCommandMode });
 
   useEffect(() => {
@@ -82,13 +87,14 @@ export const Composer = ({
 
   useLayoutEffect(() => {
     const element = promptInputRef.current;
-    if (!(element instanceof HTMLTextAreaElement)) {
+    if (!element || singleLine) {
+      if (element) element.style.height = '';
       setIsMultiline(false);
       return;
     }
 
     updateTextareaLayout(element, draft);
-  }, [draft, updateTextareaLayout]);
+  }, [draft, singleLine, updateTextareaLayout]);
 
   const completeFinderItem = (item: RootItem, enterDirectory: boolean) => {
     if (!finderToken) return;
@@ -109,7 +115,7 @@ export const Composer = ({
 
   const handleDraftInput = (event: InputEvent) => {
     const element = event.currentTarget as HTMLTextAreaElement;
-    onDraftChange(element.value);
+    onDraftChange(singleLine ? element.value.replace(/\r?\n/g, ' ') : element.value);
   };
 
   const handleKeyDown = (event: KeyboardEvent) => {
@@ -149,7 +155,7 @@ export const Composer = ({
       return;
     }
 
-    if (event.key !== 'Enter' || event.shiftKey) return;
+    if (event.key !== 'Enter' || (event.shiftKey && !singleLine)) return;
     event.preventDefault();
     if (!draft.trim()) {
       if (previousTurn) onRefillPrevious();
@@ -160,11 +166,16 @@ export const Composer = ({
 
   return (
     <div
+      {...(overlay ? { key: revealKey } : {})}
+      onAnimationEnd={(event) => {
+        if (event.animationName === 'composer-floating-shell-out') onExitComplete();
+      }}
       class={cn(
         'inset-x-0 isolate mx-auto w-full max-w-3xl rounded-2xl px-5',
         overlay ? 'fixed' : 'absolute',
         centered && 'top-[calc(50%-28px)]',
-        overlay && 'composer-floating-shell',
+        overlay && 'composer-floating-shell [will-change:opacity,transform]',
+        overlay && (exiting ? 'animate-composer-overlay-shell-out' : 'animate-composer-overlay-shell-in'),
         !overlay && hasTurns && 'bottom-4.5'
       )}
     >
@@ -186,7 +197,7 @@ export const Composer = ({
         class={cn(
           'relative z-30 overflow-hidden border-0 bg-composer [-webkit-app-region:no-drag] [&_*]:[-webkit-app-region:no-drag]',
           layered ? 'rounded-t-2xl rounded-b-3xl' : 'rounded-3xl',
-          overlay && 'animate-composer-overlay-field-in shadow-composer-overlay',
+          overlay && 'shadow-composer-overlay',
           finderAttached && !isCommandMode && 'shadow-composer-attached',
           !finderAttached && !overlay && 'shadow-shell'
         )}
@@ -234,25 +245,17 @@ export const Composer = ({
                 ))}
               </div>
             )}
-            <textarea
-              rows={1}
-              value={draft}
-              ref={setPromptInputRef}
-              role="combobox"
-              aria-label={promptPlaceholder.label}
-              aria-expanded={Boolean(finderToken)}
-              aria-controls="composer-finder"
-              aria-autocomplete="list"
-              aria-activedescendant={selectedFinderItem ? finderItemId(selectedFinderItem.path) : undefined}
-              spellcheck={false}
-              autoCorrect="off"
-              onInput={handleDraftInput}
+            <PromptControl
+              draft={draft}
+              label={promptPlaceholder.label}
               onPaste={onPaste}
+              onInput={handleDraftInput}
+              expanded={Boolean(finderToken)}
+              inputRef={setPromptInputRef}
+              singleLine={singleLine}
               onKeyDown={handleKeyDown}
-              autoComplete="off"
-              autoCapitalize="off"
               placeholder={promptPlaceholder.placeholder}
-              class="block max-h-25.5 min-h-5.75 w-full min-w-0 resize-none overflow-y-auto border-0 bg-transparent px-1 py-0.5 text-sm leading-6 text-ink outline-0 [scrollbar-color:oklch(70%_0.01_264/0.5)_transparent] [scrollbar-width:thin] placeholder:text-soft"
+              {...(selectedFinderItem ? { activeDescendant: finderItemId(selectedFinderItem.path) } : {})}
             />
           </div>
           <div class={cn('relative flex items-center gap-1.5', layered && 'order-2 ml-auto')}>

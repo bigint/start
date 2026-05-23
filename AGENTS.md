@@ -24,6 +24,10 @@
 - Prefer `index.ts` or `index.tsx` when a module file would repeat its parent folder name.
 - Prefer optimistic cached UI data for popovers, pickers, and frequently opened surfaces; refresh in the background and update only when real data changes.
 - Omit optional object properties when absent instead of serializing `undefined` or placeholder `null` values.
+- Model renderer loading state with explicit discriminated unions instead of stacking `null` and `undefined` in state types.
+- Use a bare `return;` for no-value exits instead of `return undefined;`.
+- Use conditional object spreads for optional JSX props instead of passing `undefined` with a ternary.
+- Avoid single-use constants; inline values unless a name removes meaningful duplication or prevents a real maintenance hazard.
 - Prefer empty strings for absent renderer-only string state such as selected ids, model keys, and paths; reserve `undefined` for optional API boundaries and omitted object properties.
 - For optional object spreads, prefer clear truthy guards like `...(value ? { value } : {})` over verbose `value === undefined ? {}` branches unless `0`, `false`, or an empty string is a valid value that must be preserved.
 - Read environment variables only through `packages/desktop/src/main/environment.ts`; do not scatter `process.env` usage across the app.
@@ -34,6 +38,7 @@
 - The app description is `your coding agent`
 - The app name is `start`, the bundle identifier is `one.intelligence.start`, and the public domain is `https://start.intelligence.one`.
 - The application window, html, body, and root backgrounds must stay transparent in light and dark mode.
+- The renderer runs in Electron Chromium; avoid browser fallback CSS for non-Chromium engines.
 - The prompt send button icon must remain visible in all themes and use a 2 px stroke.
 - Tooltips must use Base UI side data attributes for direction-aware transform/opacity animations.
 - Use system UI fonts only. Do not add external fonts.

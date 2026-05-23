@@ -3,6 +3,7 @@ import { Menu, nativeImage, shell, Tray } from 'electron';
 
 type MenuActions = {
   onNewSession: () => void;
+  onQuickAccess: () => void;
   onShowSettings: () => void;
 };
 
@@ -16,7 +17,7 @@ const createTrayIcon = () => {
   return resizedIcon;
 };
 
-export const installStatusItem = ({ onNewSession, onShowSettings }: MenuActions) => {
+export const installStatusItem = ({ onNewSession, onQuickAccess, onShowSettings }: MenuActions) => {
   if (!tray) {
     tray = new Tray(createTrayIcon());
   }
@@ -30,6 +31,10 @@ export const installStatusItem = ({ onNewSession, onShowSettings }: MenuActions)
         click: onNewSession
       },
       {
+        label: 'Quick Access',
+        click: onQuickAccess
+      },
+      {
         label: 'Settings',
         accelerator: 'CommandOrControl+,',
         click: onShowSettings
@@ -40,7 +45,7 @@ export const installStatusItem = ({ onNewSession, onShowSettings }: MenuActions)
   );
 };
 
-export const installApplicationMenu = ({ onNewSession, onShowSettings }: MenuActions) => {
+export const installApplicationMenu = ({ onNewSession, onQuickAccess, onShowSettings }: MenuActions) => {
   if (!isMac) {
     Menu.setApplicationMenu(null);
     return;
@@ -79,6 +84,10 @@ export const installApplicationMenu = ({ onNewSession, onShowSettings }: MenuAct
             label: 'New Session',
             accelerator: 'CommandOrControl+N',
             click: onNewSession
+          },
+          {
+            label: 'Quick Access',
+            click: onQuickAccess
           },
           { type: 'separator' },
           { role: 'close' }

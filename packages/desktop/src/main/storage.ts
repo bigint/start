@@ -21,10 +21,13 @@ export const startCacheDir = () => join(startDir(), 'cache');
 export const startLogPath = () => join(startDir(), 'logs', 'app.log');
 export const startStatePath = () => join(startDir(), 'state.json');
 
-const cleanString = (value: unknown) => (typeof value === 'string' && value.trim() ? value.trim() : undefined);
+const cleanString = (value: unknown) => {
+  if (typeof value === 'string' && value.trim()) return value.trim();
+  return;
+};
 
 const cleanStringRecord = (value: unknown) => {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return;
 
   const entries = Object.entries(value).flatMap(([key, entry]) => {
     const cleanKey = cleanString(key);
@@ -32,7 +35,8 @@ const cleanStringRecord = (value: unknown) => {
     return cleanKey && cleanEntry ? ([[cleanKey, cleanEntry]] as const) : [];
   });
 
-  return entries.length > 0 ? Object.fromEntries(entries) : undefined;
+  if (entries.length > 0) return Object.fromEntries(entries);
+  return;
 };
 
 const cleanThinkingLevel = (value: unknown): EffortLevel => {

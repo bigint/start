@@ -98,7 +98,7 @@ const targetImageSize = (width: number, height: number, maxDimension: number) =>
 
 const resizedImageCandidate = (image: Electron.NativeImage, width: number, height: number) => {
   const resized = image.resize({ width, height, quality: 'best' });
-  if (resized.isEmpty()) return undefined;
+  if (resized.isEmpty()) return;
 
   const png = encodeImage(resized.toPNG(), 'image/png');
   if (png.size < maxImageBase64Bytes) return { data: png.data, mimeType: png.mimeType };
@@ -108,7 +108,7 @@ const resizedImageCandidate = (image: Electron.NativeImage, width: number, heigh
     if (jpeg.size < maxImageBase64Bytes) return { data: jpeg.data, mimeType: jpeg.mimeType };
   }
 
-  return undefined;
+  return;
 };
 
 const resizeImage = (buffer: Buffer) => {
@@ -158,9 +158,10 @@ const prepareImageBuffer = async (filePath: string, buffer: Buffer, mimeType: st
   const needsNativeBounds = mimeType === 'image/jpeg' || mimeType === 'image/png';
   const originalMightFit = base64Size(buffer.byteLength) < maxImageBase64Bytes;
   const originalUsable = originalMightFit && (!needsNativeBounds || imageSizeWithinBounds(buffer));
-  const encoded = originalUsable ? encodeImage(buffer, mimeType) : undefined;
+  let encoded: ReturnType<typeof encodeImage> | undefined;
+  if (originalUsable) encoded = encodeImage(buffer, mimeType);
   const image = encoded ? { data: encoded.data, mimeType: encoded.mimeType } : resizeImage(buffer);
-  if (!image) return undefined;
+  if (!image) return;
 
   return {
     ...image,
@@ -174,7 +175,7 @@ const prepareImageBuffer = async (filePath: string, buffer: Buffer, mimeType: st
 };
 
 const sniffImageMimeType = async (filePath: string) => {
-  const fileHandle = await open(filePath, 'r').catch(() => undefined);
+  const fileHandle = await open(filePath, 'r').catch(() => {});
   if (!fileHandle) return null;
 
   try {
@@ -187,14 +188,15 @@ const sniffImageMimeType = async (filePath: string) => {
 };
 
 const prepareImageAttachment = async (filePath: string) => {
-  const fileStat = await stat(filePath).catch(() => undefined);
-  if (!fileStat?.isFile()) return undefined;
+  const fileStat = await stat(filePath).catch(() => {});
+  if (!fileStat?.isFile()) return;
 
   const mimeType = await sniffImageMimeType(filePath);
-  if (!mimeType) return undefined;
+  if (!mimeType) return;
 
-  const buffer = await readFile(filePath).catch(() => undefined);
-  return buffer ? prepareImageBuffer(filePath, buffer, mimeType) : undefined;
+  const buffer = await readFile(filePath).catch(() => {});
+  if (!buffer) return;
+  return prepareImageBuffer(filePath, buffer, mimeType);
 };
 
 const toPosixPath = (filePath: string) => filePath.split(path.sep).join(path.posix.sep);

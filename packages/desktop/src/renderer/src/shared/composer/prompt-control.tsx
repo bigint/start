@@ -1,0 +1,53 @@
+import { cn } from '@renderer/utils/cn';
+
+type PromptControlProps = {
+  draft: string;
+  label: string;
+  expanded: boolean;
+  singleLine: boolean;
+  placeholder: string;
+  activeDescendant?: string;
+  onPaste: (event: ClipboardEvent) => void;
+  onInput: (event: InputEvent) => void;
+  onKeyDown: (event: KeyboardEvent) => void;
+  inputRef: (element: HTMLTextAreaElement | null) => void;
+};
+
+export const PromptControl = ({
+  draft,
+  label,
+  onPaste,
+  onInput,
+  expanded,
+  inputRef,
+  singleLine,
+  onKeyDown,
+  placeholder,
+  activeDescendant
+}: PromptControlProps) => (
+  <textarea
+    rows={1}
+    value={draft}
+    ref={inputRef}
+    role="combobox"
+    aria-label={label}
+    aria-expanded={expanded}
+    aria-controls="composer-finder"
+    aria-autocomplete="list"
+    {...(activeDescendant ? { 'aria-activedescendant': activeDescendant } : {})}
+    spellcheck={false}
+    autoCorrect="off"
+    onInput={onInput}
+    onPaste={onPaste}
+    onKeyDown={onKeyDown}
+    autoComplete="off"
+    autoCapitalize="off"
+    placeholder={placeholder}
+    {...(singleLine ? { wrap: 'off' } : {})}
+    class={cn(
+      'block min-h-5.75 w-full min-w-0 resize-none border-0 bg-transparent px-1 py-0.5 text-sm leading-6 text-ink outline-0 placeholder:text-soft',
+      singleLine && 'overflow-hidden',
+      !singleLine && 'max-h-25.5 overflow-y-auto'
+    )}
+  />
+);

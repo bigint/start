@@ -118,7 +118,7 @@ export const Settings = ({
         const draftKey = apiKeys[provider.key];
         const authLabel = auth?.label ?? 'Checking';
         const hasDraftKey = draftKey.trim().length > 0;
-        const authDetail = auth?.connected ? connectionDetail(auth.label) : undefined;
+        const authDetail = auth?.connected ? connectionDetail(auth.label) : '';
 
         return (
           <div class={cn('py-4', index > 0 && 'border-t border-line')} key={provider.key}>

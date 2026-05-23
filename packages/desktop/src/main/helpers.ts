@@ -126,9 +126,9 @@ export const thinkingDelta = (event: AgentSessionEvent) => {
 };
 
 export const agentEndError = (event: AgentSessionEvent) => {
-  if (event.type !== 'agent_end') return undefined;
+  if (event.type !== 'agent_end') return;
   const lastMessage = event.messages.at(-1);
-  if (!lastMessage || !('errorMessage' in lastMessage)) return undefined;
-  if (typeof lastMessage.errorMessage !== 'string') return undefined;
+  if (!lastMessage || !('errorMessage' in lastMessage)) return;
+  if (typeof lastMessage.errorMessage !== 'string') return;
   return lastMessage.errorMessage;
 };

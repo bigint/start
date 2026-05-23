@@ -1,0 +1,135 @@
+import { CycleVerticalIcon } from '@renderer/ui/icons';
+import { Tooltip } from '@renderer/ui/tooltip';
+import { cn } from '@renderer/utils/cn';
+import { lazy, Suspense } from 'preact/compat';
+import { useEffect, useMemo, useState } from 'preact/hooks';
+import {
+  availableViewModes,
+  emptyGitSummary,
+  gitChangesLabel,
+  gitViewLabel,
+  nextViewMode,
+  sectionsForViewMode,
+  summaryForViewMode,
+  type GitPatchViewMode,
+  useGitChanges,
+  useGitPatch
+} from '@renderer/shared/workspace/changes/state';
+
+const loadGitDiffViewer = () =>
+  import('@renderer/shared/workspace/changes/diff').then((module) => ({ default: module.GitDiffViewer }));
+const GitDiffViewer = lazy(loadGitDiffViewer);
+
+export const GitChangesBadge = ({
+  expanded = false,
+  workspacePath,
+  onTogglePanel
+}: {
+  expanded?: boolean;
+  workspacePath: string;
+  onTogglePanel: () => void;
+}) => {
+  const git = useGitChanges(workspacePath);
+  if (git.kind !== 'ready' || git.summary.filesChanged === 0) return null;
+
+  const label = gitChangesLabel(git.summary.filesChanged);
+
+  return (
+    <Tooltip label={label}>
+      <button
+        type="button"
+        aria-expanded={expanded}
+        aria-label={`${expanded ? 'Hide' : 'Show'} git changes, ${label}`}
+        onClick={onTogglePanel}
+        class="absolute right-18 bottom-4.5 z-40 flex h-11.5 items-center gap-2 rounded-full border-0 bg-composer px-5 text-xs leading-none font-semibold text-soft shadow-shell outline-0 transition-[background-color,opacity] duration-75 ease-out select-none hover:bg-control focus-visible:bg-control [-webkit-app-region:no-drag] @max-bottom-controls/chat:pointer-events-none @max-bottom-controls/chat:opacity-0"
+      >
+        <span class="tabular-nums text-success">+{git.summary.insertions}</span>
+        <span class="tabular-nums text-danger">-{git.summary.deletions}</span>
+      </button>
+    </Tooltip>
+  );
+};
+
+export const GitChangesPanel = ({ workspacePath }: { workspacePath: string }) => {
+  const [diffReady, setDiffReady] = useState(false);
+  const [viewMode, setViewMode] = useState<GitPatchViewMode>('all');
+  const git = useGitChanges(workspacePath);
+  const hasChanges = git.kind === 'ready' && git.summary.filesChanged > 0;
+  const patch = useGitPatch(workspacePath, hasChanges && diffReady);
+
+  useEffect(() => {
+    setDiffReady(false);
+    const timer = window.setTimeout(() => setDiffReady(true), 190);
+    return () => window.clearTimeout(timer);
+  }, [workspacePath]);
+
+  useEffect(() => {
+    if (!diffReady || !hasChanges) return;
+    void loadGitDiffViewer();
+  }, [diffReady, hasChanges]);
+
+  useEffect(() => {
+    if (patch.kind !== 'ready') {
+      setViewMode('all');
+      return;
+    }
+
+    if (!availableViewModes(patch.patch.sections).includes(viewMode)) setViewMode('all');
+  }, [patch, viewMode]);
+
+  const visibleSections = useMemo(
+    () => (patch.kind === 'ready' ? sectionsForViewMode(patch.patch.sections, viewMode) : []),
+    [patch, viewMode]
+  );
+  const visibleSummary =
+    git.kind === 'ready'
+      ? summaryForViewMode(git.summary, patch.kind === 'ready' ? patch.patch.sections : [], viewMode)
+      : emptyGitSummary;
+  const canCycle = patch.kind === 'ready' && availableViewModes(patch.patch.sections).length > 1;
+
+  return (
+    <div class="flex min-h-full flex-col gap-4 outline-0">
+      {git.kind === 'loading' && <p class="m-0 px-4 pt-4 text-sm leading-6 text-soft">Preparing diff...</p>}
+      {git.kind === 'unavailable' && (
+        <p class="m-0 px-4 pt-4 text-sm leading-6 text-soft">No git repository for this workspace.</p>
+      )}
+      {git.kind === 'ready' && (
+        <>
+          <header class="flex items-center justify-between gap-3 px-4 pt-4 text-sm leading-6 font-medium">
+            <button
+              type="button"
+              disabled={!canCycle}
+              onClick={() => {
+                if (patch.kind === 'ready') setViewMode((current) => nextViewMode(current, patch.patch.sections));
+              }}
+              class={cn(
+                'inline-flex min-w-0 items-center gap-1.5 truncate border-0 bg-transparent p-0 text-left text-soft outline-0',
+                canCycle && 'transition-colors hover:text-hover focus-visible:text-hover'
+              )}
+            >
+              <span class="min-w-0 truncate">{gitViewLabel(viewMode, visibleSummary.filesChanged)}</span>
+              {canCycle && <CycleVerticalIcon class="size-3.5 flex-none" />}
+            </button>
+            <div class="flex items-center gap-2 font-medium">
+              <span class="tabular-nums text-success">+{visibleSummary.insertions}</span>
+              <span class="tabular-nums text-danger">-{visibleSummary.deletions}</span>
+            </div>
+          </header>
+          {!hasChanges && <p class="m-0 px-4 text-sm leading-6 text-soft">No diff to show.</p>}
+        </>
+      )}
+      {patch.kind === 'loading' && <p class="m-0 px-4 text-sm leading-6 text-soft">Preparing diff...</p>}
+      {patch.kind === 'unavailable' && <p class="m-0 px-4 text-sm leading-6 text-soft">No diff to show.</p>}
+      {patch.kind === 'ready' && patch.patch.sections.length === 0 && (
+        <p class="m-0 px-4 text-sm leading-6 text-soft">No diff to show.</p>
+      )}
+      {patch.kind === 'ready' && patch.patch.sections.length > 0 && (
+        <div class="min-w-0 pb-4">
+          <Suspense fallback={<p class="m-0 px-4 text-sm leading-6 text-soft">Preparing diff…</p>}>
+            <GitDiffViewer sections={visibleSections} />
+          </Suspense>
+        </div>
+      )}
+    </div>
+  );
+};

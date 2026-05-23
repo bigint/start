@@ -103,7 +103,7 @@ const SessionContent = ({
         exit={{ opacity: 0, y: 4, transition: closeMotionTransition }}
         initial={{ opacity: 0, y: 4 }}
         transition={{ ...openMotionTransition, delay: 0.05 }}
-        class="flex h-full w-90 flex-col gap-1 overflow-y-auto p-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        class="flex h-full w-90 flex-col gap-1 overflow-y-auto p-1 [&::-webkit-scrollbar]:hidden"
       >
         <SessionRows
           sessions={sessions}

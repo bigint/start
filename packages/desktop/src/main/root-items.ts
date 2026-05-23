@@ -47,11 +47,16 @@ const readRootItems = async (relativePath: string, scope: RootItemsScope, worksp
       .filter((entry) => !entry.name.startsWith('.'))
       .map(async (entry) => {
         const entryPath = path.join(targetPath, entry.name);
-        const entryStat = entry.isSymbolicLink() ? await stat(entryPath).catch(() => undefined) : undefined;
+        let entryStat: Awaited<ReturnType<typeof stat>> | undefined;
+        if (entry.isSymbolicLink()) {
+          try {
+            entryStat = await stat(entryPath);
+          } catch {}
+        }
         const isDirectory = entry.isDirectory() || entryStat?.isDirectory();
         const isFile = entry.isFile() || entryStat?.isFile();
 
-        if (!isDirectory && !isFile) return undefined;
+        if (!isDirectory && !isFile) return;
 
         return {
           name: entry.name,

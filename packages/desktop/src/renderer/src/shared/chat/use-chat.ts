@@ -20,7 +20,7 @@ import { useCallback, useMemo, useRef, useState } from 'preact/hooks';
 type UseChatOptions = {
   onShowChat: () => void;
   onShowSettings: () => void;
-  textareaRef: RefObject<HTMLTextAreaElement | HTMLInputElement>;
+  textareaRef: RefObject<HTMLTextAreaElement>;
 };
 
 type ClearSessionOptions = {
@@ -69,6 +69,7 @@ export const useChat = ({ onShowChat, onShowSettings, textareaRef }: UseChatOpti
 
   const syncStatus = useCallback(async () => {
     const nextStatus = await window.pi.chat.status();
+    primeWorkspaceFolders(nextStatus.workspacePath);
     setWorkspacePath(nextStatus.workspacePath);
     selectedModelKeyState.value = nextStatus.selectedModelKey ?? '';
     setSelectedModelKey(nextStatus.selectedModelKey ?? '');

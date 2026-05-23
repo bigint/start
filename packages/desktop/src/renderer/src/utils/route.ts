@@ -24,7 +24,7 @@ const routeFromPath = (path: string): AppRoute => {
 
 const hashPath = () => {
   const hash = window.location.hash;
-  if (!hash.startsWith('#/')) return undefined;
+  if (!hash.startsWith('#/')) return;
   return hash.slice(1);
 };
 

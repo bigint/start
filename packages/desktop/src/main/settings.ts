@@ -34,7 +34,7 @@ export const writeAppSettings = async (settings: AppSettings): Promise<AppSettin
 };
 
 export const validateAccelerator = (accelerator: string) => {
-  globalShortcut.register(accelerator, () => undefined);
+  globalShortcut.register(accelerator, () => {});
   const registered = globalShortcut.isRegistered(accelerator);
   if (registered) globalShortcut.unregister(accelerator);
   return registered;

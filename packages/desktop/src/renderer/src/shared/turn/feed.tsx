@@ -48,7 +48,7 @@ export const Turns = ({ turns, activityPanelTurnId, onOpenActivityPanel }: Turns
     <section
       ref={scrollRef}
       aria-live="polite"
-      class="absolute inset-0 overflow-y-auto pt-9 pb-28 [-ms-overflow-style:none] [overflow-anchor:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      class="absolute inset-0 overflow-y-auto pt-9 pb-28 [overflow-anchor:none] [&::-webkit-scrollbar]:hidden"
     >
       <div class="mx-auto flex min-h-full max-w-3xl flex-col justify-end gap-3 px-5">
         <TurnContent

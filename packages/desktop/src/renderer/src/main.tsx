@@ -8,6 +8,7 @@ import { useFileAttachments } from '@renderer/shared/composer/use-file-attachmen
 import { SidePanelLayout } from '@renderer/shared/side-panel/layout';
 import { hasActivityDetails } from '@renderer/shared/turn/activity';
 import { ActivityPanel } from '@renderer/shared/turn/panel';
+import { GitChangesBadge, GitChangesPanel } from '@renderer/shared/workspace/changes';
 import { WorkspaceDock } from '@renderer/shared/workspace/dock';
 import { appHotkeys, useAppHotkey } from '@renderer/ui/hotkeys';
 import { currentRoute, routeUrl, sameRoute, type AppRoute } from '@renderer/utils/route';
@@ -16,6 +17,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import './styles.css';
 
 type AppSurface = 'main' | 'composer';
+type SidePanelMode = '' | 'activity' | 'git';
 
 const installRendererIcon = () => {
   const icon = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
@@ -35,11 +37,15 @@ const App = () => {
   const [surface, setSurface] = useState<AppSurface>(initialSurface);
   const [attachments, setAttachments] = useState<ImageAttachment[]>([]);
   const [activityTurnId, setActivityTurnId] = useState('');
+  const [sidePanelMode, setSidePanelMode] = useState<SidePanelMode>('');
   const [debugToolbarVisible, setDebugToolbarVisible] = useState(false);
   const [composerShortcut, setComposerShortcut] = useState('Control+Space');
+  const [composerRevealKey, setComposerRevealKey] = useState(0);
+  const [composerExiting, setComposerExiting] = useState(false);
   const openingRouteSessionRef = useRef('');
   const selectingSessionRef = useRef(false);
-  const textareaRef = useRef<HTMLTextAreaElement | HTMLInputElement>(null);
+  const composerExitFinishRef = useRef<(() => void) | undefined>();
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const releasePendingAttachments = useCallback((items: ImageAttachment[]) => {
     if (items.length > 0) void window.pi.chat.releaseAttachments(items.map((attachment) => attachment.id));
@@ -134,8 +140,11 @@ const App = () => {
 
   useEffect(() => {
     return window.pi.app.onShowComposer(() => {
+      composerExitFinishRef.current = undefined;
+      setComposerExiting(false);
       setSurface('composer');
-      textareaRef.current?.focus();
+      setComposerRevealKey((key) => key + 1);
+      requestAnimationFrame(() => textareaRef.current?.focus());
     });
   }, []);
 
@@ -261,41 +270,81 @@ const App = () => {
     [releasePendingAttachments]
   );
 
+  const finishComposerExit = useCallback((finish: () => void) => {
+    composerExitFinishRef.current = finish;
+    setComposerExiting(true);
+  }, []);
+
+  const completeComposerExit = useCallback(() => {
+    const finish = composerExitFinishRef.current;
+    composerExitFinishRef.current = undefined;
+    setComposerExiting(false);
+    finish?.();
+  }, []);
+
   const submitDraft = useCallback(() => {
-    if (!draft.trim()) return;
+    if (!draft.trim() || composerExiting) return;
 
     const pendingAttachments = attachments;
-    setAttachments([]);
 
     if (surface === 'composer') {
-      void window.pi.app.submitComposer(draft, pendingAttachments);
-      setDraft('');
+      finishComposerExit(() => {
+        setAttachments([]);
+        void window.pi.app.submitComposer(draft, pendingAttachments);
+        setDraft('');
+      });
       return;
     }
 
+    setAttachments([]);
     void send(pendingAttachments);
-  }, [attachments, draft, send, setDraft, surface]);
+  }, [attachments, composerExiting, draft, finishComposerExit, send, setDraft, surface]);
 
   const discardComposerOverlay = useCallback(() => {
-    if (surface !== 'composer') return;
-    discardComposerDraft();
-    void window.pi.app.hideComposer();
-  }, [discardComposerDraft, surface]);
+    if (surface !== 'composer' || composerExiting) return;
+    finishComposerExit(() => {
+      void window.pi.app.hideComposer();
+    });
+  }, [composerExiting, finishComposerExit, surface]);
+
+  useEffect(() => {
+    return window.pi.app.onHideComposerRequest(discardComposerOverlay);
+  }, [discardComposerOverlay]);
 
   const openAttachment = useCallback((path: string) => {
     void window.pi.app.openPath(path);
   }, []);
 
-  const collapseActivityPanel = useCallback(() => setActivityTurnId(''), []);
+  const collapseSidePanel = useCallback(() => {
+    setActivityTurnId('');
+    setSidePanelMode('');
+  }, []);
+
+  const openActivityPanel = useCallback((turnId: string) => {
+    setActivityTurnId(turnId);
+    setSidePanelMode('activity');
+  }, []);
+
+  const toggleGitChangesPanel = useCallback(() => {
+    setActivityTurnId('');
+    setSidePanelMode((current) => (current === 'git' ? '' : 'git'));
+  }, []);
   const sessionViewActive = route.name === 'chat' || route.name === 'session';
   const activityTurn = useMemo(() => turns.find((turn) => turn.id === activityTurnId), [activityTurnId, turns]);
   const sessionRoutePending = surface === 'main' && route.name === 'session' && loadedSessionId !== route.sessionId;
   const activityDetails = activityTurn?.details ?? [];
   const activityThinking = activityTurn?.thinking ?? '';
+  const activityPanelAvailable = Boolean(activityTurn && hasActivityDetails(activityDetails, activityThinking));
   const activityPanelVisible =
-    surface === 'main' &&
-    sessionViewActive &&
-    Boolean(activityTurn && hasActivityDetails(activityDetails, activityThinking));
+    surface === 'main' && sessionViewActive && sidePanelMode === 'activity' && activityPanelAvailable;
+  const gitPanelVisible = surface === 'main' && sessionViewActive && sidePanelMode === 'git';
+  const sidePanelVisible = activityPanelVisible || gitPanelVisible;
+  const sidePanelLabel = gitPanelVisible ? 'Git changes' : 'Agent activity';
+  const sidePanel = gitPanelVisible ? (
+    <GitChangesPanel workspacePath={workspacePath} />
+  ) : (
+    <ActivityPanel details={activityDetails} thinking={activityThinking} />
+  );
 
   const fileHandlers = useFileAttachments({
     enabled: sessionViewActive,
@@ -324,6 +373,8 @@ const App = () => {
       workspacePath={workspacePath}
       overlay={overlay}
       hasTurns={hasTurns}
+      exiting={overlay && composerExiting}
+      revealKey={overlay ? composerRevealKey : 0}
       onRefillPrevious={refillPrevious}
       selectedModelKey={selectedModelKey}
       previousTurn={previousUserTurn}
@@ -331,6 +382,7 @@ const App = () => {
       onRemoveAttachment={removeAttachment}
       onSelectModel={selectModelFromComposer}
       onOpenSettings={showSettings}
+      onExitComplete={completeComposerExit}
       onSelectWorkspace={selectWorkspaceFromComposer}
       onChooseWorkspaceDirectory={chooseWorkspaceFromComposer}
       onSelectThinkingLevel={selectThinkingFromComposer}
@@ -340,11 +392,15 @@ const App = () => {
   return (
     <main
       aria-label="start"
-      onDrop={sessionViewActive ? fileHandlers.onDrop : undefined}
-      onDragOver={sessionViewActive ? fileHandlers.onDragOver : undefined}
-      onMouseDown={surface === 'composer' ? discardComposerOverlay : undefined}
-      onDragEnter={sessionViewActive ? fileHandlers.onDragEnter : undefined}
-      onDragLeave={sessionViewActive ? fileHandlers.onDragLeave : undefined}
+      {...(sessionViewActive
+        ? {
+            onDrop: fileHandlers.onDrop,
+            onDragOver: fileHandlers.onDragOver,
+            onDragEnter: fileHandlers.onDragEnter,
+            onDragLeave: fileHandlers.onDragLeave
+          }
+        : {})}
+      {...(surface === 'composer' ? { onMouseDown: discardComposerOverlay } : {})}
       class="relative block h-full min-h-screen w-full overflow-hidden bg-transparent"
     >
       {surface === 'main' && (
@@ -361,15 +417,15 @@ const App = () => {
         />
       ) : surface === 'main' ? (
         <SidePanelLayout
-          sidePanelLabel="Agent activity"
-          sidePanelVisible={activityPanelVisible}
-          onSidePanelCollapse={collapseActivityPanel}
-          sidePanel={<ActivityPanel details={activityDetails} thinking={activityThinking} />}
+          sidePanel={sidePanel}
+          sidePanelLabel={sidePanelLabel}
+          sidePanelVisible={sidePanelVisible}
+          onSidePanelCollapse={collapseSidePanel}
         >
           <Turns
             turns={turns}
             activityPanelTurnId={activityPanelVisible ? activityTurnId : ''}
-            onOpenActivityPanel={setActivityTurnId}
+            onOpenActivityPanel={openActivityPanel}
           />
           <WorkspaceDock
             workspacePath={workspacePath}
@@ -377,6 +433,11 @@ const App = () => {
             activeSessionId={activeSessionId}
             onChooseDirectory={() => void chooseWorkspaceDirectory()}
             onSelectWorkspace={(path) => void switchWorkspace(path)}
+          />
+          <GitChangesBadge
+            workspacePath={workspacePath}
+            expanded={gitPanelVisible}
+            onTogglePanel={toggleGitChangesPanel}
           />
           <SettingsButton onOpenSettings={showSettings} />
           {renderComposer(false, turns.length > 0 || sessionRoutePending)}

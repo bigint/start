@@ -3,7 +3,7 @@ import type { MarkdownBlockNode, MarkdownInlineNode } from '@renderer/markdown/t
 import { CopyButton } from '@renderer/ui/copy';
 import { cn } from '@renderer/utils/cn';
 import type { JSX } from 'preact';
-import { useMemo } from 'preact/hooks';
+import { useEffect, useMemo, useState } from 'preact/hooks';
 
 export type MarkdownDensity = 'compact' | 'default';
 
@@ -29,7 +29,33 @@ type MarkdownContextProps<Type extends MarkdownBlockNode['type']> = MarkdownNode
   density: MarkdownDensity;
 };
 
+type CodeHighlightModule = typeof import('@renderer/markdown/highlight');
+
+const highlightedCodeCache = new Map<string, string>();
+let codeHighlightModulePromise: Promise<CodeHighlightModule> | undefined;
+
 const headingElement = (depth: number) => `h${Math.min(Math.max(depth, 1), 6)}` as keyof JSX.IntrinsicElements;
+
+const highlightedCodeKey = (text: string, language: string | undefined) => `${language ?? ''}\0${text}`;
+
+const cacheHighlightedCode = (key: string, html: string) => {
+  highlightedCodeCache.set(key, html);
+  if (highlightedCodeCache.size <= 200) return;
+
+  const firstKey = highlightedCodeCache.keys().next().value;
+  if (firstKey) highlightedCodeCache.delete(firstKey);
+};
+
+const loadCodeHighlighter = () => {
+  codeHighlightModulePromise ??= import('@renderer/markdown/highlight');
+  return codeHighlightModulePromise;
+};
+
+const markdownCodeLanguageClass = (language: string | undefined) => {
+  const [rawName = ''] = (language ?? '').trim().toLowerCase().split(/\s+/);
+  const name = rawName.replace(/^language-/, '').replace(/[^a-z0-9_-]/g, '');
+  return name ? `language-${name}` : '';
+};
 
 const renderInlineNodes = (nodes: MarkdownInlineNode[], keyPrefix: string) =>
   nodes.map((node, index) => renderInlineNode(node, `${keyPrefix}-${index}`));
@@ -88,8 +114,33 @@ const renderCodeLine = (line: string, index: number, lines: string[], language: 
 };
 
 const MarkdownCodeBlock = ({ block, density, nodeKey }: MarkdownContextProps<'code'>) => {
-  const lines = block.text.split('\n');
+  const [, setHighlightRevision] = useState(0);
+  const highlightKey = highlightedCodeKey(block.text, block.language);
+  const highlightedHtml = highlightedCodeCache.get(highlightKey);
+  const lines = highlightedHtml ? [] : block.text.split('\n');
   const renderedLines = lines.map((line, index) => renderCodeLine(line, index, lines, block.language, nodeKey));
+
+  useEffect(() => {
+    if (!block.text || highlightedHtml) return;
+
+    let active = true;
+    let timer = 0;
+    const frame = window.requestAnimationFrame(() => {
+      timer = window.setTimeout(() => {
+        void loadCodeHighlighter().then(({ highlightCode }) => {
+          if (!active) return;
+          cacheHighlightedCode(highlightKey, highlightCode(block.text, block.language));
+          setHighlightRevision((value) => value + 1);
+        });
+      }, 0);
+    });
+
+    return () => {
+      active = false;
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(timer);
+    };
+  }, [block.language, block.text, highlightKey, highlightedHtml]);
 
   return (
     <div class="group/code my-2 overflow-hidden rounded-lg border border-line bg-ink/[0.035] dark:bg-white/[0.055]">
@@ -107,14 +158,25 @@ const MarkdownCodeBlock = ({ block, density, nodeKey }: MarkdownContextProps<'co
         />
       </div>
       <pre class="m-0">
-        <code
-          class={cn(
-            'block overflow-x-auto px-3 py-2 text-ink [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
-            density === 'compact' ? 'text-sm leading-6' : 'text-xs leading-5'
-          )}
-        >
-          {renderedLines}
-        </code>
+        {highlightedHtml ? (
+          <code
+            dangerouslySetInnerHTML={{ __html: highlightedHtml }}
+            class={cn(
+              'hljs block overflow-x-auto px-3 py-2 text-ink [&::-webkit-scrollbar]:hidden',
+              markdownCodeLanguageClass(block.language),
+              density === 'compact' ? 'text-sm leading-6' : 'text-xs leading-5'
+            )}
+          />
+        ) : (
+          <code
+            class={cn(
+              'block overflow-x-auto px-3 py-2 text-ink [&::-webkit-scrollbar]:hidden',
+              density === 'compact' ? 'text-sm leading-6' : 'text-xs leading-5'
+            )}
+          >
+            {renderedLines}
+          </code>
+        )}
       </pre>
     </div>
   );

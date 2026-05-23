@@ -6,7 +6,7 @@ import { Models } from '@renderer/shared/models';
 import { selectedModelKeyState } from '@renderer/state/chat';
 import { OpenAIIcon } from '@renderer/ui/icons';
 import { playCycleSound } from '@renderer/ui/sounds';
-import { CommonTooltip } from '@renderer/ui/tooltip';
+import { Tooltip } from '@renderer/ui/tooltip';
 import { cn } from '@renderer/utils/cn';
 import { useMemo } from 'preact/hooks';
 
@@ -65,7 +65,7 @@ export const ComposerModelPicker = ({
         )}
       >
         <Menu.Root modal={false}>
-          <CommonTooltip label={selectedModelLabel}>
+          <Tooltip label={selectedModelLabel}>
             <Menu.Trigger
               aria-label="Choose model"
               className={cn(
@@ -76,7 +76,7 @@ export const ComposerModelPicker = ({
             >
               <OpenAIIcon class="size-4 flex-none translate-x-px -translate-y-[0.5px]" />
             </Menu.Trigger>
-          </CommonTooltip>
+          </Tooltip>
           <Menu.Portal>
             <Menu.Positioner
               side="top"

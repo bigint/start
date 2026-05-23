@@ -14,9 +14,14 @@ import { combineHistoryTurns } from '@main/history-combine';
 import { codeBlock, toolBody, toolEventDetail, toolResultTitle } from '@main/tool-details';
 import type { ChatEvent, HistoryTurn, HistoryTurnDetail } from '@main/types';
 
+type HistoryToolCall = {
+  args: unknown;
+  toolName: string;
+};
+
 type HistoryContext = {
   resultToolCallIds: Set<string>;
-  toolCalls: Map<string, { args: unknown; toolName: string }>;
+  toolCalls: Map<string, HistoryToolCall>;
 };
 
 const entryId = (entry: Record<string, unknown>) => stringValue(entry.id) || `entry:${timestampValue(entry.timestamp)}`;
@@ -124,7 +129,7 @@ const customTurn = (entry: Record<string, unknown>, message: Record<string, unkn
 
 const toolResultTurn = (entry: Record<string, unknown>, message: Record<string, unknown>, context: HistoryContext) => {
   const id = stringValue(message.toolCallId);
-  const toolCall = id ? context.toolCalls.get(id) : undefined;
+  const toolCall = context.toolCalls.get(id || '');
   const toolName = stringValue(message.toolName) || toolCall?.toolName || 'tool';
   const error = booleanValue(message.isError);
   const key = id ? `tool:${id}` : `tool-result:${entryId(entry)}`;

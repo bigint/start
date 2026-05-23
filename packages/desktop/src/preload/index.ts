@@ -128,6 +128,24 @@ export type RecentSessionsChanged = {
   workspacePath?: string;
 };
 
+export type GitChangeSummary = {
+  filesChanged: number;
+  insertions: number;
+  deletions: number;
+};
+
+export type GitPatchSectionKind = 'staged' | 'unstaged' | 'untracked';
+
+export type GitPatchSection = GitChangeSummary & {
+  kind: GitPatchSectionKind;
+  limited: boolean;
+  patch: string;
+};
+
+export type GitPatch = {
+  sections: GitPatchSection[];
+};
+
 export type WorkspaceFolder = {
   name: string;
   path: string;
@@ -159,6 +177,7 @@ export type RootItem = {
 export type WorkspaceInfo = {
   branchName?: string;
   folderName: string;
+  git?: GitChangeSummary;
   iconDataUrl: string;
   path: string;
 };
@@ -193,6 +212,8 @@ const api = {
     focusState: (): Promise<AppFocusState> => ipcRenderer.invoke('app:focus-state'),
     listRootItems: (path: string, scope: 'root' | 'workspace'): Promise<RootItem[]> =>
       ipcRenderer.invoke('app:list-root-items', path, scope),
+    gitChanges: (path?: string): Promise<GitChangeSummary | undefined> => ipcRenderer.invoke('app:git-changes', path),
+    gitPatch: (path?: string): Promise<GitPatch | undefined> => ipcRenderer.invoke('app:git-patch', path),
     workspace: (path?: string): Promise<WorkspaceInfo> => ipcRenderer.invoke('app:workspace', path),
     onWorkspaceChanged: (listener: (workspace: WorkspaceInfo) => void): (() => void) => {
       const handler = (_event: Electron.IpcRendererEvent, workspace: WorkspaceInfo) => listener(workspace);
@@ -220,6 +241,11 @@ const api = {
       ipcRenderer.on('app:discard-composer', handler);
       return () => ipcRenderer.removeListener('app:discard-composer', handler);
     },
+    onHideComposerRequest: (listener: () => void): (() => void) => {
+      const handler = () => listener();
+      ipcRenderer.on('app:hide-composer-request', handler);
+      return () => ipcRenderer.removeListener('app:hide-composer-request', handler);
+    },
     onFocusStateChanged: (listener: (state: AppFocusState) => void): (() => void) => {
       const handler = (_event: Electron.IpcRendererEvent, state: AppFocusState) => listener(state);
       ipcRenderer.on('app:focus-state-changed', handler);
@@ -239,7 +265,7 @@ const api = {
   },
   chat: {
     status: (): Promise<ChatStatus> => ipcRenderer.invoke('chat:status'),
-    models: (): Promise<{ models: ModelOption[]; selectedModelKey: string | undefined; error: string | undefined }> =>
+    models: (): Promise<{ error?: string; models: ModelOption[]; selectedModelKey?: string }> =>
       ipcRenderer.invoke('chat:models'),
     recentSessions: (workspacePath?: string): Promise<RecentSession[]> =>
       ipcRenderer.invoke('chat:recent-sessions', workspacePath),

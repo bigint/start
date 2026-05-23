@@ -2,6 +2,7 @@ import { appIconPath, appId, appMenuName, appVersion, isMac } from '@main/applic
 import { ChatService } from '@main/chat';
 import { debugToolbarEnabled, getDebugMetrics } from '@main/debug';
 import { clearAppFocusTimer, getAppFocusState, scheduleAppFocusStateChanged } from '@main/focus';
+import { getGitChangeSummary, getGitPatch } from '@main/git';
 import { installApplicationMenu, installStatusItem } from '@main/menu';
 import { listRootItems, type RootItemsScope } from '@main/root-items';
 import { WorkspaceSessionWatcher } from '@main/session-watcher';
@@ -81,6 +82,7 @@ const registerComposerShortcut = (accelerator: string) => {
 
 const menuActions = () => ({
   onShowSettings: showSettings,
+  onQuickAccess: toggleComposerWindow,
   onNewSession: () => void startNewSession()
 });
 
@@ -116,6 +118,12 @@ app.whenReady().then(async () => {
   ipcMain.handle('app:runtime', () => ({ debugToolbar: debugToolbarEnabled() }));
   ipcMain.handle('app:list-root-items', async (_event, relativePath: string, scope: RootItemsScope = 'workspace') =>
     listRootItems(relativePath, scope, chat.getWorkspaceCwd())
+  );
+  ipcMain.handle('app:git-changes', (_event, workspacePath?: string) =>
+    getGitChangeSummary(workspacePath ?? chat.getWorkspaceCwd())
+  );
+  ipcMain.handle('app:git-patch', (_event, workspacePath?: string) =>
+    getGitPatch(workspacePath ?? chat.getWorkspaceCwd())
   );
   ipcMain.handle('app:workspace', (_event, workspacePath?: string) =>
     getWorkspace(workspacePath ?? chat.getWorkspaceCwd())
@@ -248,9 +256,7 @@ app.whenReady().then(async () => {
 
   createMainWindow();
 
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createMainWindow();
-  });
+  app.on('activate', showMainWindow);
 });
 
 app.on('before-quit', () => {

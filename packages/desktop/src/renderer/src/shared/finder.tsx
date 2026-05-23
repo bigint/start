@@ -14,7 +14,7 @@ export const finderItemId = (path: string) => `finder-${encodeURIComponent(path)
 
 export const Finder = ({ activePath, items, onPresentChange, onSelect, visible }: FinderProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const activeOptionId = activePath ? finderItemId(activePath) : undefined;
+  const activeOptionId = activePath ? finderItemId(activePath) : '';
 
   useEffect(() => {
     if (!activePath) return;
@@ -30,7 +30,7 @@ export const Finder = ({ activePath, items, onPresentChange, onSelect, visible }
 
   return (
     <div
-      aria-activedescendant={activeOptionId}
+      {...(activeOptionId ? { 'aria-activedescendant': activeOptionId } : {})}
       aria-label="Project files"
       id="composer-finder"
       role="listbox"
@@ -49,10 +49,7 @@ export const Finder = ({ activePath, items, onPresentChange, onSelect, visible }
       <svg aria-hidden="true" class="absolute -right-10 -bottom-px size-10 text-composer" viewBox="0 0 40 40">
         <path d="M0 0V40H40C8 40 0 32 0 0Z" fill="currentColor" />
       </svg>
-      <div
-        ref={scrollRef}
-        class="flex max-h-52 flex-col gap-1 overflow-y-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-      >
+      <div ref={scrollRef} class="flex max-h-52 flex-col gap-1 overflow-y-auto pb-2 [&::-webkit-scrollbar]:hidden">
         {items.length > 0 ? (
           items.map((item) => {
             const selected = item.path === activePath;

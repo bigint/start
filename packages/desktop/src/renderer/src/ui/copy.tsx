@@ -1,5 +1,5 @@
 import { CheckIcon, CopyIcon } from '@renderer/ui/icons';
-import { CommonTooltip } from '@renderer/ui/tooltip';
+import { Tooltip } from '@renderer/ui/tooltip';
 import { useState } from 'preact/hooks';
 
 type CopyButtonProps = {
@@ -18,7 +18,7 @@ export const CopyButton = ({ ariaLabel, class: className, iconClass = 'size-3.5'
   };
 
   return (
-    <CommonTooltip label={copied ? 'Copied' : 'Copy'}>
+    <Tooltip label={copied ? 'Copied' : 'Copy'}>
       <button
         type="button"
         aria-label={ariaLabel}
@@ -29,6 +29,6 @@ export const CopyButton = ({ ariaLabel, class: className, iconClass = 'size-3.5'
       >
         {copied ? <CheckIcon class="size-3" /> : <CopyIcon class={iconClass} />}
       </button>
-    </CommonTooltip>
+    </Tooltip>
   );
 };

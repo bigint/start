@@ -1,6 +1,6 @@
 import type { EffortLevel } from '@preload/index';
 import { EffortSignal } from '@renderer/shared/effort';
-import { CommonTooltip } from '@renderer/ui/tooltip';
+import { Tooltip } from '@renderer/ui/tooltip';
 
 type ThinkingButtonProps = {
   level: EffortLevel;
@@ -13,7 +13,7 @@ export const ThinkingButton = ({ label, level, visible, onNext }: ThinkingButton
   if (!visible) return null;
 
   return (
-    <CommonTooltip label={label}>
+    <Tooltip label={label}>
       <button
         type="button"
         onClick={onNext}
@@ -22,6 +22,6 @@ export const ThinkingButton = ({ label, level, visible, onNext }: ThinkingButton
       >
         <EffortSignal className="-translate-x-px" level={level} />
       </button>
-    </CommonTooltip>
+    </Tooltip>
   );
 };

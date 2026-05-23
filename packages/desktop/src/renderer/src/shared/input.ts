@@ -16,11 +16,11 @@ export type FinderToken = {
 
 export const commandInput = (draft: string): CommandInput | undefined => {
   const text = draft.trim();
-  if (!text.startsWith('!')) return undefined;
+  if (!text.startsWith('!')) return;
 
   const excludeFromContext = text.startsWith('!!');
   const command = text.slice(excludeFromContext ? 2 : 1).trim();
-  if (!command) return undefined;
+  if (!command) return;
 
   return { command, excludeFromContext };
 };
@@ -29,7 +29,7 @@ export const commandMode = (draft: string) => draft.trimStart().startsWith('!');
 
 export const activeFinderToken = (draft: string): FinderToken | undefined => {
   const match = /(?:^|\s)(@[^\s]*|~\/[^\s]*)$/.exec(draft);
-  if (!match?.[1]) return undefined;
+  if (!match?.[1]) return;
 
   const token = match[1];
   const marker = token[0] as '@' | '~';

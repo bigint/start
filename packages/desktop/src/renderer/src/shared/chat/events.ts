@@ -24,7 +24,7 @@ type UseChatEventsOptions = {
   onShowSettings: () => void;
   setIsGenerating: (value: boolean) => void;
   setTurns: (updater: (current: Turn[]) => Turn[]) => void;
-  textareaRef: RefObject<HTMLTextAreaElement | HTMLInputElement>;
+  textareaRef: RefObject<HTMLTextAreaElement>;
   assistantIdRef: MutableRef<string | null>;
   terminalIdRef: MutableRef<string | null>;
 };
