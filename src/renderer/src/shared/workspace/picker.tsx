@@ -18,7 +18,7 @@ export const Workspace = ({
   const workspace = useWorkspace(workspacePath);
   const rootRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
-  const { folders, refreshFolders } = useWorkspaceFolders({ workspacePath });
+  const { folders, refreshFolders } = useWorkspaceFolders({ active: open, workspacePath });
 
   const updateOpen = useCallback(
     (nextOpen: boolean) => {
@@ -31,25 +31,29 @@ export const Workspace = ({
   if (!workspace) return null;
 
   return (
-    <div ref={rootRef} class="flex h-11.5 min-w-48 max-w-64 items-center gap-px text-soft select-none">
-      <span class="flex h-full min-w-0 flex-1 items-center gap-2 rounded-[23px_3px_3px_23px] bg-composer py-1.5 pr-3 pl-1.5 shadow-shell">
-        <span class="grid size-8 flex-none place-items-center overflow-hidden rounded-full bg-white">
-          <img src={workspace.iconDataUrl} alt="" class="size-full rounded-full object-cover" draggable={false} />
-        </span>
-        <span class="flex min-w-0 max-w-40 flex-col justify-center gap-0.5">
-          <span class="truncate text-sm leading-4 font-medium text-ink">{workspace.folderName}</span>
-          <span class="truncate text-[11px] leading-3 font-medium text-soft">
-            {workspace.branchName ?? workspace.path}
-          </span>
-        </span>
-      </span>
+    <div
+      ref={rootRef}
+      class="h-11.5 w-64 max-w-[calc(100vw-2.25rem)] text-soft transition-[width] duration-150 ease-out select-none @max-workspace-dock/chat:size-11.5"
+    >
       <AppMenu.Root open={open} onOpenChange={updateOpen}>
         <AppMenu.Trigger
           aria-label="Workspace folders"
-          className="grid size-11.5 flex-none place-items-center rounded-[3px_23px_23px_3px] border-0 bg-composer text-ink shadow-shell outline-0 transition-colors hover:bg-control focus-visible:bg-control"
+          className="flex h-full w-full min-w-0 items-center gap-2 overflow-hidden rounded-full border-0 bg-composer py-1.5 pr-3 pl-1.5 text-left text-soft shadow-shell outline-0 transition-[background-color,padding] duration-150 ease-out hover:bg-control focus-visible:bg-control @max-workspace-dock/chat:justify-center @max-workspace-dock/chat:gap-0 @max-workspace-dock/chat:p-1.75"
         >
+          <span class="grid size-8 flex-none place-items-center overflow-hidden rounded-full bg-white">
+            <img src={workspace.iconDataUrl} alt="" class="size-full rounded-full object-cover" draggable={false} />
+          </span>
+          <span class="flex min-w-0 flex-1 flex-col justify-center gap-0.5 transition-[opacity,transform] duration-150 ease-out @max-workspace-dock/chat:hidden">
+            <span class="truncate text-sm leading-4 font-medium text-ink">{workspace.folderName}</span>
+            <span class="truncate text-[11px] leading-3 font-medium text-soft">
+              {workspace.branchName ?? workspace.path}
+            </span>
+          </span>
           <ChevronDownIcon
-            class={cn('-ml-px size-4 transition-transform duration-150 ease-out', open && 'rotate-180')}
+            class={cn(
+              'size-4 shrink-0 text-ink transition-[opacity,transform] duration-150 ease-out @max-workspace-dock/chat:hidden',
+              open && 'rotate-180'
+            )}
           />
         </AppMenu.Trigger>
         <AppMenu.Portal>
@@ -63,7 +67,7 @@ export const Workspace = ({
           >
             <WorkspaceMenu
               folders={folders}
-              panelWidth="workspace"
+              panelWidth="workspaceBubble"
               workspacePath={workspacePath}
               onChooseDirectory={onChooseDirectory}
               onSelectWorkspace={onSelectWorkspace}

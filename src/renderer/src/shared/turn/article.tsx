@@ -1,4 +1,4 @@
-import { Markdown } from '@renderer/markdown/markdown';
+import { Markdown } from '@renderer/markdown';
 import { TurnDetails } from '@renderer/shared/turn/details';
 import { CopyButton } from '@renderer/ui/copy';
 import { cn } from '@renderer/utils/cn';
@@ -13,15 +13,12 @@ const fallbackText = (turn: Turn) => {
   return '';
 };
 
+const supplementOnlyRoles = new Set<Turn['role']>(['event', 'terminal', 'assistant']);
+
 const hasSupplement = (turn: Turn) => Boolean(turn.thinking) || Boolean(turn.details?.length);
 
-const shouldShowBody = (turn: Turn) => {
-  if (turn.text) return true;
-  if (turn.role === 'assistant') return !hasSupplement(turn);
-  if (turn.role === 'event') return !hasSupplement(turn);
-  if (turn.role === 'terminal') return !hasSupplement(turn);
-  return true;
-};
+const shouldShowBody = (turn: Turn) =>
+  Boolean(turn.text) || !supplementOnlyRoles.has(turn.role) || !hasSupplement(turn);
 
 const shouldUseMarkdown = (turn: Turn) => turn.role === 'assistant' && Boolean(turn.text) && !turn.streaming;
 
@@ -41,7 +38,7 @@ const TurnActions = ({ turn, visible }: { turn: Turn; visible: boolean }) => {
       <CopyButton
         ariaLabel="Copy turn"
         text={turn.text}
-        class="grid size-5 place-items-center rounded-md border-0 bg-transparent text-soft transition-[background-color,color] ease-in hover:bg-line hover:text-hover"
+        class="grid size-5 place-items-center rounded-md border-0 bg-transparent text-soft transition-colors ease-in hover:bg-line hover:text-hover"
       />
       <time dateTime={new Date(turn.createdAt).toISOString()} class="px-0.5 text-xs leading-none whitespace-nowrap">
         {formatTurnTime(turn.createdAt)}
@@ -53,19 +50,23 @@ const TurnActions = ({ turn, visible }: { turn: Turn; visible: boolean }) => {
 const TurnBody = ({ turn }: { turn: Turn }) => {
   if (!shouldShowBody(turn)) return null;
 
-  const isAssistantActivity = turn.role === 'assistant' && !turn.text;
+  const isUser = turn.role === 'user';
+  const isEvent = turn.role === 'event';
+  const isSystem = turn.role === 'system';
   const useMarkdown = shouldUseMarkdown(turn);
+  const isTerminal = turn.role === 'terminal';
+  const isAssistantActivity = turn.role === 'assistant' && !turn.text;
 
   return (
     <div
       class={cn(
         'rounded-[18px] text-sm leading-6 [overflow-wrap:anywhere]',
         !useMarkdown && 'whitespace-pre-wrap',
-        turn.role === 'user' && 'w-fit max-w-full rounded-br-md bg-composer px-4 py-2',
-        turn.role !== 'user' && 'py-2',
-        turn.role === 'event' && 'py-0.5 text-xs leading-none text-soft',
-        turn.role === 'system' && 'text-danger',
-        turn.role === 'terminal' && 'text-xs leading-5 text-ink',
+        isUser && 'w-fit max-w-full rounded-br-md bg-composer px-4 py-2',
+        !isUser && 'py-2',
+        isEvent && 'py-0.5 text-xs leading-none text-soft',
+        isSystem && 'text-danger',
+        isTerminal && 'text-xs leading-5 text-ink',
         isAssistantActivity && 'text-soft'
       )}
     >
@@ -74,10 +75,18 @@ const TurnBody = ({ turn }: { turn: Turn }) => {
   );
 };
 
-export const TurnArticle = ({ turn }: { turn: Turn }) => {
+type TurnArticleProps = {
+  activityPanelOpen: boolean;
+  turn: Turn;
+  onOpenActivityPanel: (turnId: string) => void;
+};
+
+export const TurnArticle = ({ activityPanelOpen, onOpenActivityPanel, turn }: TurnArticleProps) => {
   const [hovered, setHovered] = useState(false);
   const details = turn.details ?? [];
   const thinking = turn.thinking ?? '';
+  const isUser = turn.role === 'user';
+  const isEvent = turn.role === 'event';
   const wide = hasSupplement(turn) || turn.role === 'terminal';
 
   return (
@@ -88,17 +97,19 @@ export const TurnArticle = ({ turn }: { turn: Turn }) => {
       onMouseLeave={() => setHovered(false)}
       class={cn(
         '[-webkit-app-region:no-drag] [&_*]:[-webkit-app-region:no-drag]',
-        turn.role === 'user' && 'flex w-fit max-w-[min(38rem,82%)] flex-col items-end self-end',
-        turn.role !== 'user' && 'max-w-[min(38rem,82%)] self-start',
-        turn.role === 'event' && !wide && 'self-center',
+        isUser && 'flex w-fit max-w-[min(38rem,82%)] flex-col items-end self-end',
+        !isUser && 'max-w-[min(38rem,82%)] self-start',
+        isEvent && !wide && 'self-center',
         wide && 'w-full max-w-full'
       )}
     >
       <TurnDetails
         createdAt={turn.createdAt}
         details={details}
+        panelOpen={activityPanelOpen}
         streaming={Boolean(turn.streaming)}
         thinking={thinking}
+        onOpenPanel={() => onOpenActivityPanel(turn.id)}
       />
       <TurnBody turn={turn} />
       <TurnActions turn={turn} visible={hovered} />

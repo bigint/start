@@ -1,10 +1,15 @@
 import type { MarkdownBlockNode, MarkdownInlineNode } from '@renderer/markdown/types';
 
-const fencePattern = /^```([^`]*)$/;
+const fencePattern = /^(`{3,})([^`]*)$/;
 const headingPattern = /^(#{1,6})\s+(.+)$/;
 const orderedListPattern = /^\d+[.)]\s+(.+)$/;
 const strongLinePattern = /^(?:\*\*[^*]+\*\*|__[^_]+__):?$/;
 const unorderedListPattern = /^[-*+]\s+(.+)$/;
+
+const closingFence = (line: string, length: number) => {
+  const fence = /^(`{3,})\s*$/.exec(line.trim());
+  return Boolean(fence?.[1] && fence[1].length >= length);
+};
 
 const pushParagraph = (blocks: MarkdownBlockNode[], lines: string[]) => {
   const text = lines.join('\n').trim();
@@ -83,12 +88,13 @@ export const parseMarkdown = (source: string): MarkdownBlockNode[] => {
     const trimmed = line.trim();
     const fence = fencePattern.exec(trimmed);
 
-    if (fence) {
+    if (fence?.[1]) {
       pushParagraph(blocks, paragraphLines);
       const codeLines: string[] = [];
-      const language = fence[1]?.trim();
+      const fenceLength = fence[1].length;
+      const language = fence[2]?.trim();
       index += 1;
-      while (index < lines.length && !fencePattern.test((lines[index] ?? '').trim())) {
+      while (index < lines.length && !closingFence(lines[index] ?? '', fenceLength)) {
         codeLines.push(lines[index] ?? '');
         index += 1;
       }

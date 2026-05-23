@@ -5,6 +5,20 @@ const turnTimeFormatter = new Intl.DateTimeFormat([], {
 
 export const formatTurnTime = (timestamp: number) => turnTimeFormatter.format(new Date(timestamp));
 
+export const formatDuration = (durationMs: number) => {
+  const totalSeconds = Math.max(0, Math.round(durationMs / 1000));
+  if (totalSeconds < 1) return '<1s';
+  if (totalSeconds < 60) return `${totalSeconds}s`;
+
+  const seconds = totalSeconds % 60;
+  const totalMinutes = Math.floor(totalSeconds / 60);
+  if (totalMinutes < 60) return seconds > 0 ? `${totalMinutes}m ${seconds}s` : `${totalMinutes}m`;
+
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
+};
+
 export const formatRelativeTime = (timestamp: number) => {
   const minutes = Math.max(1, Math.round((Date.now() - timestamp) / 60000));
   if (minutes < 60) return `${minutes}m ago`;

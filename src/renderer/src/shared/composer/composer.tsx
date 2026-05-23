@@ -161,7 +161,8 @@ export const Composer = ({
   return (
     <div
       class={cn(
-        'fixed inset-x-0 isolate mx-auto w-full max-w-3xl rounded-2xl px-5',
+        'inset-x-0 isolate mx-auto w-full max-w-3xl rounded-2xl px-5',
+        overlay ? 'fixed' : 'absolute',
         centered && 'top-[calc(50%-28px)]',
         overlay && 'composer-floating-shell',
         !overlay && hasTurns && 'bottom-4.5'

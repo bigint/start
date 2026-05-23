@@ -2,6 +2,15 @@ import { TurnArticle } from '@renderer/shared/turn/article';
 import type { Turn } from '@renderer/utils/types';
 import { useLayoutEffect, useMemo, useRef } from 'preact/hooks';
 
+type TurnContentProps = {
+  activityPanelTurnId: string | undefined;
+  status: string;
+  turns: Turn[];
+  onOpenActivityPanel: (turnId: string) => void;
+};
+
+type TurnsProps = TurnContentProps;
+
 const EmptyTurns = ({ status }: { status: string }) => {
   return (
     <p class="m-0 grid min-h-full place-items-center text-center text-sm leading-6 text-soft opacity-0">{status}</p>
@@ -18,13 +27,20 @@ const turnKey = (turn: Turn) => {
   return [turn.id, turn.text.length, turn.thinking?.length ?? 0, detailKey(turn)].join(':');
 };
 
-const TurnContent = ({ status, turns }: { status: string; turns: Turn[] }) => {
+const TurnContent = ({ activityPanelTurnId, onOpenActivityPanel, status, turns }: TurnContentProps) => {
   if (turns.length === 0) return <EmptyTurns status={status} />;
 
-  return turns.map((turn) => <TurnArticle key={turn.id} turn={turn} />);
+  return turns.map((turn) => (
+    <TurnArticle
+      key={turn.id}
+      turn={turn}
+      activityPanelOpen={turn.id === activityPanelTurnId}
+      onOpenActivityPanel={onOpenActivityPanel}
+    />
+  ));
 };
 
-export const Turns = ({ status, turns }: { status: string; turns: Turn[] }) => {
+export const Turns = ({ activityPanelTurnId, onOpenActivityPanel, status, turns }: TurnsProps) => {
   const scrollRef = useRef<HTMLElement>(null);
   const turnPositionKey = useMemo(() => turns.map(turnKey).join('|'), [turns]);
 
@@ -42,7 +58,12 @@ export const Turns = ({ status, turns }: { status: string; turns: Turn[] }) => {
       class="absolute inset-0 overflow-y-auto pt-9 pb-28 [-ms-overflow-style:none] [overflow-anchor:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
     >
       <div class="mx-auto flex min-h-full max-w-3xl flex-col justify-end gap-3 px-5">
-        <TurnContent status={status} turns={turns} />
+        <TurnContent
+          status={status}
+          turns={turns}
+          activityPanelTurnId={activityPanelTurnId}
+          onOpenActivityPanel={onOpenActivityPanel}
+        />
       </div>
     </section>
   );

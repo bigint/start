@@ -1,5 +1,6 @@
 import type { RecentSession, RecentSessionsChanged } from '@preload/index';
 import { HistoryIcon } from '@renderer/ui/icons';
+import { closeMotionTransition, openMotionTransition } from '@renderer/ui/motion';
 import { cn } from '@renderer/utils/cn';
 import { formatRelativeTime } from '@renderer/utils/time';
 import { AnimatePresence, motion } from 'motion/react';
@@ -99,10 +100,10 @@ const SessionContent = ({
       <motion.ul
         key="sessions"
         animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: 4, transition: { duration: 0.1, ease: 'easeOut' } }}
+        exit={{ opacity: 0, y: 4, transition: closeMotionTransition }}
         initial={{ opacity: 0, y: 4 }}
-        transition={{ duration: 0.12, delay: 0.05, ease: 'easeOut' }}
-        class="flex h-full w-90 flex-col gap-1 overflow-y-auto p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        transition={{ ...openMotionTransition, delay: 0.05 }}
+        class="flex h-full w-90 flex-col gap-1 overflow-y-auto p-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         <SessionRows
           sessions={sessions}
@@ -130,7 +131,7 @@ export const RecentSessions = ({
   const [open, setOpen] = useState(false);
   const [sessions, setSessions] = useState<RecentSession[]>([]);
   const expandedHeight = !loaded || sessions.length > 0 ? 520 : 108;
-  const panelTransition = { duration: 0.16, ease: [0.22, 1, 0.36, 1] };
+  const panelTransition = open ? openMotionTransition : closeMotionTransition;
 
   const loadSessions = useCallback(
     async (showLoading = false) => {

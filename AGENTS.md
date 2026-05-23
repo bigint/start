@@ -2,19 +2,26 @@
 
 - Avoid vague theme names like `bg-bg`. Use descriptive names such as `bg-canvas`, `bg-composer`, `bg-control`, `text-ink`, and `text-soft`.
 - Do not put Tailwind class lists in constants. Tailwind classes belong inline in `class` or `className` attributes. Use `cn` only for conditional inline classes.
+- Prefer Tailwind utilities over custom CSS. Keep `styles.css` limited to theme tokens, global element rules, keyframes, pseudo-elements, and third-party data-attribute states that Tailwind cannot express cleanly.
+- Prefer named Tailwind utilities before arbitrary values; use arbitrary values only when no base utility preserves the intended measurement, selector, or color.
+- Revalidate custom classes before adding or keeping them; remove custom class hooks when inline Tailwind utilities or component props can express the same styling.
 - Follow commit style: use lowercase, precise commit titles and messages, prefixed with `fix:`, `feat:`, or `chore:`.
 - Keep code comment-free unless a comment prevents a real maintenance hazard.
 - Keep code warning-free and error-free. Run `pnpm check` before reporting completion.
 - Keep files small. Split component files before they approach 300 lines.
-- Keep UI smooth: avoid flicker, avoid unnecessary re-renders, memoize only when it helps, and animate only opacity/transform for high-frequency UI.
+- Keep UI highly performant and snappy: avoid flicker, avoid unnecessary re-renders, memoize only when it helps, and animate only opacity/transform for high-frequency UI.
 - Keep primary conversational content direct; place diagnostics, metadata, and tool output behind concise collapsed details.
 - Group files that share a domain or filename prefix into a domain folder instead of leaving flat clusters like `workspace-*` files.
 - Inside domain folders, keep child filenames short and precise; avoid repeating the folder/domain name unless it improves clarity.
 - Name component files with clear component words only; avoid extra suffixes like `list` or `card` when the component name is already clear.
+- Prefer `index.ts` or `index.tsx` when a module file would repeat its parent folder name.
 - Prefer optimistic cached UI data for popovers, pickers, and frequently opened surfaces; refresh in the background and update only when real data changes.
 - Omit optional object properties when absent instead of serializing `undefined` or placeholder `null` values.
 - Read environment variables only through `src/main/environment.ts`; do not scatter `process.env` usage across the app.
 - Sort props, variables, hooks, destructured constants, and object constants by total line length when it does not make the code harder to read or break framework conventions.
+- Extract multi-branch render logic into named components or helpers, and hoist repeated role or state checks into clear booleans before JSX.
+- Use hover backgrounds only when an inline control needs a filled selected affordance; otherwise prefer text-color feedback.
+- For expandable rows, keep identifiers inline in titles and reserve expanded content for supporting output, diffs, or detail bodies.
 - The app description is `your coding agent`
 - The app name is `start`, the bundle identifier is `one.intelligence.start`, and the public domain is `https://start.intelligence.one`.
 - The application window, html, body, and root backgrounds must stay transparent in light and dark mode.

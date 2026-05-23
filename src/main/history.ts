@@ -8,22 +8,15 @@ import {
   stringValue,
   textContent,
   thinkingContent,
-  timestampValue,
-  toolEventDetail
+  timestampValue
 } from '@main/details';
 import { combineHistoryTurns } from '@main/history-combine';
+import { codeBlock, toolBody, toolEventDetail, toolResultTitle } from '@main/tool-details';
 import type { ChatEvent, HistoryTurn, HistoryTurnDetail } from '@main/types';
 
-const eventTitle = (toolName: string, error: boolean) => {
-  if (error) return `${toolName} failed`;
-  if (toolName === 'bash') return 'Ran command';
-  if (toolName === 'edit') return 'Edited file';
-  if (toolName === 'find') return 'Found files';
-  if (toolName === 'grep') return 'Searched files';
-  if (toolName === 'read') return 'Reviewed file';
-  if (toolName === 'write') return 'Wrote file';
-  if (toolName === 'ls') return 'Explored folder';
-  return `Used ${toolName}`;
+type HistoryContext = {
+  resultToolCallIds: Set<string>;
+  toolCalls: Map<string, { args: unknown; toolName: string }>;
 };
 
 const entryId = (entry: Record<string, unknown>) => stringValue(entry.id) || `entry:${timestampValue(entry.timestamp)}`;
@@ -54,28 +47,32 @@ const detailTurn = (entry: Record<string, unknown>, event: ChatEvent): HistoryTu
   return [turn];
 };
 
-const assistantDetails = (entryIdValue: string, createdAt: number, content: unknown) => {
+const assistantDetails = (entryIdValue: string, createdAt: number, content: unknown, context: HistoryContext) => {
   if (!Array.isArray(content)) return [];
 
   return content.flatMap((part, index): HistoryTurnDetail[] => {
     if (!isRecord(part)) return [];
     if (stringValue(part.type) !== 'toolCall') return [];
 
+    const id = stringValue(part.id) || `${entryIdValue}:${index}`;
     const name = stringValue(part.name) || 'tool';
+    context.toolCalls.set(id, { args: part.arguments, toolName: name });
+    if (context.resultToolCallIds.has(id)) return [];
+
     const event = toolEventDetail({
       state: 'done',
       args: part.arguments,
       toolName: name,
-      key: `tool:${entryIdValue}:${index}`
+      key: `tool:${id}`
     });
     return [historyDetail(event, index, entryIdValue, createdAt)];
   });
 };
 
-const assistantTurn = (entry: Record<string, unknown>, message: Record<string, unknown>) => {
+const assistantTurn = (entry: Record<string, unknown>, message: Record<string, unknown>, context: HistoryContext) => {
   const createdAt = timestampValue(entry.timestamp);
   const id = entryId(entry);
-  const details = assistantDetails(id, createdAt, message.content);
+  const details = assistantDetails(id, createdAt, message.content, context);
   const thinking = thinkingContent(message.content);
   const text = textContent(message.content);
 
@@ -99,7 +96,10 @@ const bashTurn = (entry: Record<string, unknown>, message: Record<string, unknow
   const truncated = booleanValue(message.truncated) ? 'truncated' : '';
   const exitCode =
     typeof message.exitCode === 'number' && Number.isFinite(message.exitCode) ? `exit ${message.exitCode}` : '';
-  const body = [output, [status, exitCode, truncated].filter(Boolean).join(', ')].filter(Boolean).join('\n').trim();
+  const body = [output ? codeBlock(output, 'bash') : '', [status, exitCode, truncated].filter(Boolean).join(', ')]
+    .filter(Boolean)
+    .join('\n\n')
+    .trim();
   const event: ChatEvent = {
     key: `bash:${entryId(entry)}`,
     kind: 'tool',
@@ -108,7 +108,7 @@ const bashTurn = (entry: Record<string, unknown>, message: Record<string, unknow
   };
 
   if (body) event.body = body;
-  if (command) event.detail = command;
+  if (command) event.detail = codeBlock(command, 'bash');
   return detailTurn(entry, event);
 };
 
@@ -122,27 +122,31 @@ const customTurn = (entry: Record<string, unknown>, message: Record<string, unkn
   return detailTurn(entry, compactEvent(`custom:${entryId(entry)}`, customType, text));
 };
 
-const diffMarkdown = (details: unknown) => {
-  if (!isRecord(details)) return '';
-
-  const diff = stringValue(details.diff);
-  return diff ? `\`\`\`diff\n${diff}\n\`\`\`` : '';
-};
-
-const toolResultBody = (toolName: string, message: Record<string, unknown>) => {
-  const content = textContent(message.content);
-  const diff = toolName === 'edit' ? diffMarkdown(message.details) : '';
-  return [content, diff].filter(Boolean).join('\n\n').trim();
-};
-
-const toolResultTurn = (entry: Record<string, unknown>, message: Record<string, unknown>) => {
-  const toolName = stringValue(message.toolName) || 'tool';
+const toolResultTurn = (entry: Record<string, unknown>, message: Record<string, unknown>, context: HistoryContext) => {
+  const id = stringValue(message.toolCallId);
+  const toolCall = id ? context.toolCalls.get(id) : undefined;
+  const toolName = stringValue(message.toolName) || toolCall?.toolName || 'tool';
   const error = booleanValue(message.isError);
-  const body = toolResultBody(toolName, message);
+  const key = id ? `tool:${id}` : `tool-result:${entryId(entry)}`;
+
+  if (toolCall) {
+    return detailTurn(
+      entry,
+      toolEventDetail({
+        key,
+        state: error ? 'error' : 'done',
+        result: message,
+        args: toolCall.args,
+        toolName
+      })
+    );
+  }
+
+  const body = toolBody(toolName, {}, message);
   const event: ChatEvent = {
-    key: `tool-result:${entryId(entry)}`,
+    key,
     kind: error ? 'error' : 'tool',
-    title: eventTitle(toolName, error),
+    title: toolResultTitle(toolName, error),
     state: error ? 'error' : 'done'
   };
 
@@ -171,16 +175,16 @@ const compactionSummaryTurn = (entry: Record<string, unknown>, message: Record<s
   return compactionTurn(entry, stringValue(message.summary), numberValue(message.tokensBefore));
 };
 
-const messageTurns = (entry: Record<string, unknown>) => {
+const messageTurns = (entry: Record<string, unknown>, context: HistoryContext) => {
   if (!isRecord(entry.message)) return [];
 
   const role = stringValue(entry.message.role);
-  if (role === 'assistant') return assistantTurn(entry, entry.message);
+  if (role === 'assistant') return assistantTurn(entry, entry.message, context);
   if (role === 'bashExecution') return bashTurn(entry, entry.message);
   if (role === 'branchSummary') return branchSummaryTurn(entry, entry.message);
   if (role === 'compactionSummary') return compactionSummaryTurn(entry, entry.message);
   if (role === 'custom') return customTurn(entry, entry.message);
-  if (role === 'toolResult') return toolResultTurn(entry, entry.message);
+  if (role === 'toolResult') return toolResultTurn(entry, entry.message, context);
   if (role === 'user') return userTurn(entry, entry.message);
   return [];
 };
@@ -235,10 +239,28 @@ const metadataTurn = (entry: Record<string, unknown>) => {
   return compactionTurn(entry, stringValue(entry.summary), numberValue(entry.tokensBefore));
 };
 
+const collectResultToolCallIds = (entries: readonly unknown[]) => {
+  const ids = new Set<string>();
+
+  for (const entry of entries) {
+    if (!isRecord(entry) || entry.type !== 'message' || !isRecord(entry.message)) continue;
+    if (stringValue(entry.message.role) !== 'toolResult') continue;
+
+    const id = stringValue(entry.message.toolCallId);
+    if (id) ids.add(id);
+  }
+
+  return ids;
+};
+
 export const historyTurns = (entries: readonly unknown[]): HistoryTurn[] => {
+  const context: HistoryContext = {
+    resultToolCallIds: collectResultToolCallIds(entries),
+    toolCalls: new Map()
+  };
   const turns = entries.flatMap((entry) => {
     if (!isRecord(entry)) return [];
-    if (entry.type === 'message') return messageTurns(entry);
+    if (entry.type === 'message') return messageTurns(entry, context);
     return metadataTurn(entry);
   });
 

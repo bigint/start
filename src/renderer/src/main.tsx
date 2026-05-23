@@ -5,11 +5,14 @@ import { DropOverlay } from '@renderer/shared/drop-overlay';
 import { SettingsButton } from '@renderer/shared/settings/button';
 import { useChat } from '@renderer/shared/chat/use-chat';
 import { useFileAttachments } from '@renderer/shared/composer/use-file-attachments';
+import { SideLayout } from '@renderer/shared/side/layout';
+import { hasActivityDetails } from '@renderer/shared/turn/activity';
+import { ActivityPanel } from '@renderer/shared/turn/panel';
 import { WorkspaceDock } from '@renderer/shared/workspace/dock';
 import { appHotkeys, useAppHotkey } from '@renderer/ui/hotkeys';
 import { currentRoute, routeUrl, sameRoute, type AppRoute } from '@renderer/utils/route';
 import { render } from 'preact';
-import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import './styles.css';
 
 type AppSurface = 'main' | 'composer';
@@ -31,6 +34,7 @@ const App = () => {
   const [route, setRoute] = useState<AppRoute>(currentRoute);
   const [surface, setSurface] = useState<AppSurface>(initialSurface);
   const [attachments, setAttachments] = useState<ImageAttachment[]>([]);
+  const [activityTurnId, setActivityTurnId] = useState<string | undefined>();
   const [debugToolbarVisible, setDebugToolbarVisible] = useState(false);
   const [composerShortcut, setComposerShortcut] = useState('Control+Space');
   const openingRouteSessionRef = useRef<string | undefined>();
@@ -282,7 +286,15 @@ const App = () => {
     void window.pi.app.openPath(path);
   }, []);
 
+  const collapseActivityPanel = useCallback(() => setActivityTurnId(undefined), []);
   const sessionViewActive = route.name === 'chat' || route.name === 'session';
+  const activityTurn = useMemo(() => turns.find((turn) => turn.id === activityTurnId), [activityTurnId, turns]);
+  const activityDetails = activityTurn?.details ?? [];
+  const activityThinking = activityTurn?.thinking ?? '';
+  const activityPanelVisible =
+    surface === 'main' &&
+    sessionViewActive &&
+    Boolean(activityTurn && hasActivityDetails(activityDetails, activityThinking));
 
   const fileHandlers = useFileAttachments({
     enabled: sessionViewActive,
@@ -293,6 +305,36 @@ const App = () => {
 
   useAppHotkey(appHotkeys.newChat, () => startNewSession());
   useAppHotkey(appHotkeys.settings, () => showSettings());
+
+  const renderComposer = (overlay: boolean, hasTurns: boolean) => (
+    <Composer
+      draft={draft}
+      models={models}
+      attachments={attachments}
+      modelsLoaded={modelsLoaded}
+      onPaste={fileHandlers.onPaste}
+      onStop={stopResponse}
+      onSubmit={submitDraft}
+      onCancel={discardComposerOverlay}
+      onDraftChange={setDraft}
+      textareaRef={textareaRef}
+      isGenerating={isGenerating}
+      thinkingLevel={thinkingLevel}
+      workspacePath={workspacePath}
+      overlay={overlay}
+      hasTurns={hasTurns}
+      onRefillPrevious={refillPrevious}
+      selectedModelKey={selectedModelKey}
+      previousTurn={previousUserTurn}
+      onOpenAttachment={openAttachment}
+      onRemoveAttachment={removeAttachment}
+      onSelectModel={selectModelFromComposer}
+      onOpenSettings={showSettings}
+      onSelectWorkspace={selectWorkspaceFromComposer}
+      onChooseWorkspaceDirectory={chooseWorkspaceFromComposer}
+      onSelectThinkingLevel={selectThinkingFromComposer}
+    />
+  );
 
   return (
     <main
@@ -305,7 +347,7 @@ const App = () => {
       class="relative block h-full min-h-screen w-full overflow-hidden bg-transparent"
     >
       {surface === 'main' && (
-        <div aria-hidden="true" class="absolute inset-x-0 top-0 z-2 h-7 [-webkit-app-region:drag]" />
+        <div aria-hidden="true" class="absolute inset-x-0 top-0 z-[1000] h-7 [-webkit-app-region:drag]" />
       )}
       {route.name === 'settings' ? (
         <Settings
@@ -316,47 +358,31 @@ const App = () => {
           onComposerShortcutChange={updateComposerShortcut}
           onLoginSubscription={loginSubscription}
         />
-      ) : (
-        <>
-          {surface === 'main' && <Turns status={status} turns={turns} />}
-          {surface === 'main' && (
-            <WorkspaceDock
-              workspacePath={workspacePath}
-              onOpenSession={openRecentSession}
-              activeSessionId={activeSessionId}
-              onChooseDirectory={() => void chooseWorkspaceDirectory()}
-              onSelectWorkspace={(path) => void switchWorkspace(path)}
-            />
-          )}
-          {surface === 'main' && <SettingsButton onOpenSettings={showSettings} />}
-          <Composer
-            draft={draft}
-            models={models}
-            attachments={attachments}
-            modelsLoaded={modelsLoaded}
-            onPaste={fileHandlers.onPaste}
-            onStop={stopResponse}
-            onSubmit={submitDraft}
-            onCancel={discardComposerOverlay}
-            onDraftChange={setDraft}
-            textareaRef={textareaRef}
-            isGenerating={isGenerating}
-            thinkingLevel={thinkingLevel}
-            workspacePath={workspacePath}
-            overlay={surface === 'composer'}
-            hasTurns={surface === 'main' && turns.length > 0}
-            onRefillPrevious={refillPrevious}
-            selectedModelKey={selectedModelKey}
-            previousTurn={previousUserTurn}
-            onOpenAttachment={openAttachment}
-            onRemoveAttachment={removeAttachment}
-            onSelectModel={selectModelFromComposer}
-            onOpenSettings={showSettings}
-            onSelectWorkspace={selectWorkspaceFromComposer}
-            onChooseWorkspaceDirectory={chooseWorkspaceFromComposer}
-            onSelectThinkingLevel={selectThinkingFromComposer}
+      ) : surface === 'main' ? (
+        <SideLayout
+          sidebarLabel="Agent activity"
+          sidebarVisible={activityPanelVisible}
+          onSidebarCollapse={collapseActivityPanel}
+          sidebar={<ActivityPanel details={activityDetails} thinking={activityThinking} />}
+        >
+          <Turns
+            status={status}
+            turns={turns}
+            activityPanelTurnId={activityPanelVisible ? activityTurnId : undefined}
+            onOpenActivityPanel={setActivityTurnId}
           />
-        </>
+          <WorkspaceDock
+            workspacePath={workspacePath}
+            onOpenSession={openRecentSession}
+            activeSessionId={activeSessionId}
+            onChooseDirectory={() => void chooseWorkspaceDirectory()}
+            onSelectWorkspace={(path) => void switchWorkspace(path)}
+          />
+          <SettingsButton onOpenSettings={showSettings} />
+          {renderComposer(false, turns.length > 0)}
+        </SideLayout>
+      ) : (
+        renderComposer(true, false)
       )}
       {sessionViewActive && <DropOverlay visible={fileHandlers.dropActive} />}
       {debugToolbarVisible && surface === 'main' && <DebugToolbar />}
