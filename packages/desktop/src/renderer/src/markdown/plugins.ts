@@ -71,22 +71,34 @@ const requiredPlugins = (source: string): PluginLoadState => {
 };
 
 const loadCjkPlugin = () => {
-  pluginPromises.cjk ??= pluginModules.cjk();
+  pluginPromises.cjk ??= pluginModules.cjk().catch((error: unknown) => {
+    delete pluginPromises.cjk;
+    throw error;
+  });
   return pluginPromises.cjk;
 };
 
 const loadCodePlugin = () => {
-  pluginPromises.code ??= pluginModules.code();
+  pluginPromises.code ??= pluginModules.code().catch((error: unknown) => {
+    delete pluginPromises.code;
+    throw error;
+  });
   return pluginPromises.code;
 };
 
 const loadMathPlugin = () => {
-  pluginPromises.math ??= pluginModules.math();
+  pluginPromises.math ??= pluginModules.math().catch((error: unknown) => {
+    delete pluginPromises.math;
+    throw error;
+  });
   return pluginPromises.math;
 };
 
 const loadMermaidPlugin = () => {
-  pluginPromises.mermaid ??= pluginModules.mermaid();
+  pluginPromises.mermaid ??= pluginModules.mermaid().catch((error: unknown) => {
+    delete pluginPromises.mermaid;
+    throw error;
+  });
   return pluginPromises.mermaid;
 };
 
@@ -105,10 +117,12 @@ export const useMarkdownPlugins = (source: string) => {
     if (pendingLoads.length === 0) return;
 
     let active = true;
-    void Promise.all(pendingLoads).then((plugins) => {
-      if (!active) return;
-      setLoadedPlugins((current) => Object.assign({}, current, ...plugins));
-    });
+    void Promise.all(pendingLoads)
+      .then((plugins) => {
+        if (!active) return;
+        setLoadedPlugins((current) => Object.assign({}, current, ...plugins));
+      })
+      .catch(() => {});
 
     return () => {
       active = false;

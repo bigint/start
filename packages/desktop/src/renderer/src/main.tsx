@@ -1,18 +1,15 @@
 import { App } from '@renderer/app';
+import { appIconHref } from '@renderer/constants';
 import { render } from 'preact';
 import './styles.css';
 
 const installRendererIcon = () => {
   const icon = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
-  if (icon) icon.href = import.meta.env.DEV ? '/icon-dev.png' : '/icon.png';
+  if (icon) icon.href = appIconHref;
 };
 
 installRendererIcon();
 
-const root = document.getElementById('root');
-
-if (!(root instanceof HTMLElement)) {
-  throw new Error('start root element was not found');
-}
+const root = document.getElementById('root') as HTMLElement;
 
 render(<App />, root);
