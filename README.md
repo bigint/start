@@ -2,26 +2,27 @@
 
 your coding assistant
 
-Install dependencies with `pnpm install`.
+start is a desktop and mobile coding assistant.
 
-Run desktop with `pnpm dev` or `pnpm desktop`.
+```text
+.
+├── packages/
+│   ├── desktop/   Electron app
+│   └── mobile/    Expo app
+├── patches/       pnpm patches
+└── scripts/       repo checks
+```
 
-Run mobile with `pnpm mobile`.
+Use pnpm.
 
-Check changes with `pnpm check`.
+- install: `pnpm install`
+- desktop: `pnpm dev` or `pnpm desktop`
+- mobile: `pnpm mobile`
+- check: `pnpm check`
+- build: `pnpm build`
+- package desktop: `pnpm package`
+- desktop distributables: `pnpm dist`
 
-Build with `pnpm build`.
-
-Package desktop with `pnpm package`.
-
-Create desktop distributables with `pnpm dist`.
-
-Desktop: `packages/desktop`.
-
-Mobile: `packages/mobile`.
-
-Keep dependency versions pinned exactly. If `pnpm-lock.yaml` changes intentionally, commit with `ALLOW_LOCKFILE_CHANGE=1`.
+Keep direct dependency versions pinned exactly. If `pnpm-lock.yaml` changes intentionally, commit with `ALLOW_LOCKFILE_CHANGE=1`.
 
 Do not commit secrets, local paths, certificates, or personal email addresses.
-
-Runtime sign-in and API keys are configured inside the app.
