@@ -8,6 +8,7 @@ export const TooltipProvider = ({ children }: { children: ComponentChildren }) =
 export const CommonTooltip = ({
   label,
   children,
+  disabled = false,
   side = 'top',
   align = 'center',
   sideOffset = 12
@@ -15,11 +16,12 @@ export const CommonTooltip = ({
   sideOffset?: number;
   label: ComponentChildren;
   children: ComponentChildren;
+  disabled?: boolean;
   align?: 'start' | 'center' | 'end';
   side?: 'top' | 'right' | 'bottom' | 'left';
 }) => {
   return (
-    <Tooltip.Root>
+    <Tooltip.Root disabled={disabled}>
       <Tooltip.Trigger delay={180} render={children} />
       <Tooltip.Portal>
         <Tooltip.Positioner
