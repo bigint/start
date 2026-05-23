@@ -1,4 +1,4 @@
-Start, your coding assistant.
+**Start**, your coding assistant.
 
 ```text
 .
