@@ -1,5 +1,12 @@
 export type ResizeCursor = 'e-resize' | 'ew-resize' | 'w-resize';
 
+type ResizeCursorState = {
+  canCollapse: boolean;
+  maxWidth: number;
+  minWidth: number;
+  width: number;
+};
+
 const maxSidePanelCollapseWidth = 128;
 const minSidePanelCollapseWidth = 80;
 const sidePanelCollapseWidthRatio = 0.35;
@@ -16,9 +23,12 @@ export const getSidePanelCollapseWidth = (minSidePanelWidth: number) =>
     clamp(minSidePanelWidth * sidePanelCollapseWidthRatio, minSidePanelCollapseWidth, maxSidePanelCollapseWidth)
   );
 
-export const getResizeCursor = (startX: number, currentX: number): ResizeCursor => {
-  if (currentX < startX) return 'w-resize';
-  if (currentX > startX) return 'e-resize';
+export const getResizeCursor = ({ canCollapse, maxWidth, minWidth, width }: ResizeCursorState): ResizeCursor => {
+  const canGrow = width < maxWidth;
+  const canShrink = width > minWidth || canCollapse;
+
+  if (!canGrow && canShrink) return 'e-resize';
+  if (canGrow && !canShrink) return 'w-resize';
   return 'ew-resize';
 };
 
