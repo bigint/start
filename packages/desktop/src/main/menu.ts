@@ -91,6 +91,7 @@ export const installApplicationMenu = ({
           { label: `About ${appMenuName}`, role: 'about' },
           {
             label: 'Check for Updates',
+            enabled: true,
             click: onCheckForUpdates
           },
           { type: 'separator' },
