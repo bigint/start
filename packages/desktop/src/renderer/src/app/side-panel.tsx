@@ -7,12 +7,13 @@ import { GitChangesPanel } from '@renderer/shared/workspace/changes';
 import { memo } from 'preact/compat';
 
 interface AppSidePanelProps {
-  mode: SidePanelMode;
-  providers: ProviderAuthStatus[];
   turnId: string;
+  mode: SidePanelMode;
   workspacePath: string;
   composerShortcut: string;
+  providers: ProviderAuthStatus[];
   onLoginSubscription: (provider: string) => Promise<void>;
+  onDisconnectProvider: (provider: string) => Promise<void>;
   onSaveApiKey: (provider: string, apiKey: string) => Promise<void>;
   onComposerShortcutChange: (shortcut: string) => Promise<AppSettingsResult>;
 }
@@ -39,6 +40,7 @@ export const AppSidePanel = memo(
     onSaveApiKey,
     composerShortcut,
     onLoginSubscription,
+    onDisconnectProvider,
     onComposerShortcutChange
   }: AppSidePanelProps) => {
     if (mode === 'git') return <GitChangesPanel path={workspacePath} />;
@@ -50,6 +52,7 @@ export const AppSidePanel = memo(
           onSaveApiKey={onSaveApiKey}
           composerShortcut={composerShortcut}
           onLoginSubscription={onLoginSubscription}
+          onDisconnectProvider={onDisconnectProvider}
           onComposerShortcutChange={onComposerShortcutChange}
         />
       );

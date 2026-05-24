@@ -1,6 +1,8 @@
 import type { AppSettingsResult, ProviderAuthStatus } from '@preload/index';
 import { AnthropicIcon, GeminiIcon, OpenAIIcon } from '@renderer/ui/icons';
+import { closeMotionTransition, openMotionTransition } from '@renderer/ui/motion';
 import { tw } from '@renderer/utils/tw';
+import { AnimatePresence, motion } from 'motion/react';
 import { memo } from 'preact/compat';
 import { useState } from 'preact/hooks';
 
@@ -29,9 +31,10 @@ const providers: {
 ];
 
 interface SettingsProps {
-  providers: ProviderAuthStatus[];
   composerShortcut: string;
+  providers: ProviderAuthStatus[];
   onLoginSubscription: (provider: string) => Promise<void>;
+  onDisconnectProvider: (provider: string) => Promise<void>;
   onSaveApiKey: (provider: string, apiKey: string) => Promise<void>;
   onComposerShortcutChange: (shortcut: string) => Promise<AppSettingsResult>;
 }
@@ -43,11 +46,6 @@ const ProviderIcon = ({ provider }: { provider: ProviderKey }) => {
   if (provider === 'openai') return <OpenAIIcon class="size-5" />;
   if (provider === 'google') return <GeminiIcon class="size-5" />;
   return <AnthropicIcon class="size-5" />;
-};
-
-const subscriptionLabel = (connected: boolean) => {
-  if (connected) return 'Reconnect subscription';
-  return 'Connect subscription';
 };
 
 const connectionDetail = (label: string | undefined) => label?.replace(/^Connected\s*/u, '').trim();
@@ -73,6 +71,7 @@ export const Settings = memo(
     onSaveApiKey,
     composerShortcut,
     onLoginSubscription,
+    onDisconnectProvider,
     providers: authProviders,
     onComposerShortcutChange
   }: SettingsProps) => {
@@ -120,9 +119,11 @@ export const Settings = memo(
         {providers.map((provider, index) => {
           const auth = providerStatus(authProviders, provider.key);
           const draftKey = apiKeys[provider.key];
+          const connected = auth?.connected ?? false;
+          const hasCredentials = auth?.hasCredentials ?? false;
           const authLabel = auth?.label ?? 'Not connected';
           const hasDraftKey = draftKey.trim().length > 0;
-          const authDetail = auth?.connected ? connectionDetail(auth.label) : '';
+          const authDetail = connected ? connectionDetail(auth?.label) : '';
 
           return (
             <div class={tw('py-4', index > 0 && 'border-t border-line')} key={provider.key}>
@@ -133,7 +134,7 @@ export const Settings = memo(
                 <div class="min-w-0 flex-1">
                   <h3 class="m-0 text-sm leading-5 font-medium text-ink">{provider.name}</h3>
                   <p class="m-0 text-xs leading-4 text-soft">
-                    {auth?.connected ? (
+                    {connected ? (
                       <>
                         <span class="text-success">Connected</span>
                         {authDetail && <> {authDetail}</>}
@@ -143,39 +144,66 @@ export const Settings = memo(
                     )}
                   </p>
                 </div>
+                <AnimatePresence initial={false}>
+                  {hasCredentials && (
+                    <motion.button
+                      key="disconnect"
+                      type="button"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1, transition: openMotionTransition }}
+                      exit={{ opacity: 0, transition: closeMotionTransition }}
+                      onClick={() => void onDisconnectProvider(provider.key)}
+                      class="h-8 flex-none rounded-full border border-line bg-control px-3 text-xs font-medium text-ink transition-opacity duration-100 ease-in hover:opacity-80"
+                    >
+                      Disconnect
+                    </motion.button>
+                  )}
+                </AnimatePresence>
               </div>
 
-              <div class="mt-3 grid gap-2">
-                <div class="relative rounded-full border border-line bg-composer p-1">
-                  <input
-                    type="password"
-                    value={draftKey}
-                    onInput={(event) => updateApiKey(provider.key, event.currentTarget.value)}
-                    placeholder={`${provider.name} API key`}
-                    class="h-8 w-full rounded-full border-0 bg-transparent pr-20 pl-3 text-sm text-ink outline-none placeholder:text-soft"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => void saveApiKey(provider.key)}
-                    disabled={!hasDraftKey}
-                    class="absolute top-1 right-1 h-8 rounded-full border-0 bg-control px-4 text-sm font-medium text-ink transition-opacity duration-100 ease-in hover:opacity-80 disabled:opacity-55"
+              <AnimatePresence initial={false}>
+                {!hasCredentials && (
+                  <motion.div
+                    key="form"
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto', transition: openMotionTransition }}
+                    exit={{ opacity: 0, height: 0, transition: closeMotionTransition }}
+                    class="overflow-hidden"
                   >
-                    Save
-                  </button>
-                </div>
-                {provider.supportsSubscription && (
-                  <div class="flex items-center gap-2 px-1 text-xs leading-5 text-soft">
-                    <span>or</span>
-                    <button
-                      type="button"
-                      onClick={() => void onLoginSubscription(provider.key)}
-                      class="border-0 bg-transparent p-0 text-xs leading-5 font-medium text-ink transition-opacity duration-100 ease-in hover:opacity-80"
-                    >
-                      {subscriptionLabel(auth?.connected ?? false)}
-                    </button>
-                  </div>
+                    <div class="mt-3 grid gap-2">
+                      <div class="relative rounded-full border border-line bg-composer p-1">
+                        <input
+                          type="password"
+                          value={draftKey}
+                          onInput={(event) => updateApiKey(provider.key, event.currentTarget.value)}
+                          placeholder={`${provider.name} API key`}
+                          class="h-8 w-full rounded-full border-0 bg-transparent pr-20 pl-3 text-sm text-ink outline-none placeholder:text-soft"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => void saveApiKey(provider.key)}
+                          disabled={!hasDraftKey}
+                          class="absolute top-1 right-1 h-8 rounded-full border-0 bg-control px-4 text-sm font-medium text-ink transition-opacity duration-100 ease-in hover:opacity-80 disabled:opacity-55"
+                        >
+                          Save
+                        </button>
+                      </div>
+                      {provider.supportsSubscription && (
+                        <div class="flex items-center gap-2 px-1 text-xs leading-5 text-soft">
+                          <span>or</span>
+                          <button
+                            type="button"
+                            onClick={() => void onLoginSubscription(provider.key)}
+                            class="border-0 bg-transparent p-0 text-xs leading-5 font-medium text-ink transition-opacity duration-100 ease-in hover:opacity-80"
+                          >
+                            Connect subscription
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
                 )}
-              </div>
+              </AnimatePresence>
             </div>
           );
         })}

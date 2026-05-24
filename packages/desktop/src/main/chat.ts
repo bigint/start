@@ -24,6 +24,7 @@ import {
   modelLabel,
   providerAuthKind,
   providerAuthLabel,
+  providerAuthSlots,
   textDelta,
   thinkingDelta
 } from '@main/helpers';
@@ -519,6 +520,16 @@ export class ChatService {
     if (!cleanProvider || !cleanApiKey) return this.getAuthProviders();
 
     this.authStorage.set(cleanProvider, { type: 'api_key', key: cleanApiKey });
+    this.modelRegistry.refresh();
+
+    return this.getAuthProviders();
+  }
+
+  async disconnectProvider(provider: string): Promise<ProviderAuthStatus[]> {
+    const cleanProvider = provider.trim().toLowerCase();
+    if (!cleanProvider) return this.getAuthProviders();
+
+    for (const slot of providerAuthSlots(cleanProvider)) this.authStorage.remove(slot);
     this.modelRegistry.refresh();
 
     return this.getAuthProviders();
@@ -1336,6 +1347,7 @@ export class ChatService {
     const subscriptionStatus = supportsSubscription ? this.authStorage.getAuthStatus(subscriptionProvider) : undefined;
     const hasSubscription =
       supportsSubscription && (subscriptionCredential?.type === 'oauth' || subscriptionStatus?.configured === true);
+    const hasCredentials = hasApiKey || hasSubscription;
     const kind = providerAuthKind(hasModels, hasSubscription, hasApiKey);
 
     return {
@@ -1343,7 +1355,8 @@ export class ChatService {
       name,
       kind,
       connected: hasModels,
-      label: providerAuthLabel(kind, hasSubscription || hasApiKey)
+      hasCredentials,
+      label: providerAuthLabel(kind, hasCredentials)
     };
   }
 
