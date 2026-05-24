@@ -11,14 +11,15 @@ export const ActivityPanel = memo(({ turnId }: ActivityPanelProps) => {
   const signal = turnSignal(turnId);
   const turn = signal?.value;
   const details = turn?.details ?? [];
+  const items = turn?.activityItems ?? [];
   const thinking = turn?.thinking ?? '';
 
-  if (!hasActivityDetails(details, thinking)) return null;
+  if (!hasActivityDetails(details, thinking, items)) return null;
 
   return (
     <div class="min-h-full outline-0">
       <div class="p-4">
-        <ActivityItems details={details} thinking={thinking} />
+        <ActivityItems details={details} items={items} thinking={thinking} />
       </div>
     </div>
   );

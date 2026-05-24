@@ -1,7 +1,9 @@
 import { trackAnalyticsEvent } from '@main/analytics';
 import { getAppFocusState, onAppFocusChanged } from '@main/focus';
 import { sendToRendererWindows } from '@main/window';
-import { app, ipcMain } from 'electron';
+import electron from 'electron';
+
+const { app, ipcMain } = electron;
 import electronUpdater from 'electron-updater';
 
 const { autoUpdater } = electronUpdater;

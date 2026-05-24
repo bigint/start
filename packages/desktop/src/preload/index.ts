@@ -1,4 +1,6 @@
-import { contextBridge, ipcRenderer, webUtils } from 'electron';
+import electron from 'electron';
+
+const { contextBridge, ipcRenderer, webUtils } = electron;
 
 export interface AppSettings {
   composerShortcut: string;
@@ -137,6 +139,7 @@ export interface RecentSession {
   path: string;
   title: string;
   modified: number;
+  status?: AgentTabStatus;
   noticeKind?: SessionNoticeKind;
 }
 
@@ -233,6 +236,12 @@ export interface SkillItem {
   path: string;
 }
 
+export interface SlashCommandItem {
+  name: string;
+  description: string;
+  source: 'extension' | 'prompt' | 'skill';
+}
+
 export interface WorkspaceInfo {
   branchName?: string;
   folderName: string;
@@ -315,6 +324,7 @@ const api = {
     markNoticeSeen: (sessionId: string): Promise<void> => ipcRenderer.invoke('chat:notices:mark-seen', sessionId),
     models: (): Promise<{ error?: string; models: ModelOption[]; selectedModelKey?: string }> =>
       ipcRenderer.invoke('chat:models'),
+    slashCommands: (): Promise<SlashCommandItem[]> => ipcRenderer.invoke('chat:slash-commands'),
     recentSessionsPage: (options: RecentSessionsOptions = {}): Promise<RecentSessionsPage> =>
       ipcRenderer.invoke('chat:sessions:page', options),
     onRecentSessionsChanged: (listener: (event: RecentSessionsChanged) => void): IpcDisposer =>

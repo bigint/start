@@ -1,6 +1,8 @@
 import { readdir, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
-import { nativeImage } from 'electron';
+import electron from 'electron';
+
+const { nativeImage } = electron;
 
 type IconCandidate = {
   filePath: string;

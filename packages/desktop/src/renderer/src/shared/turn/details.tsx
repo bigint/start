@@ -2,7 +2,7 @@ import { hasActivityDetails } from '@renderer/shared/turn/activity';
 import { ActivityTrigger } from '@renderer/shared/turn/activity-trigger';
 import { activityLabel } from '@renderer/shared/turn/label';
 import { WorkingLabel } from '@renderer/shared/turn/working-label';
-import type { TurnDetail } from '@renderer/utils/types';
+import type { TurnActivityItem, TurnDetail } from '@renderer/utils/types';
 
 interface TurnDetailsProps {
   working: boolean;
@@ -10,11 +10,20 @@ interface TurnDetailsProps {
   createdAt: number;
   panelOpen: boolean;
   details: TurnDetail[];
+  items: TurnActivityItem[];
   onOpenPanel: () => void;
 }
 
-export const TurnDetails = ({ details, working, thinking, createdAt, panelOpen, onOpenPanel }: TurnDetailsProps) => {
-  const hasDetails = hasActivityDetails(details, thinking);
+export const TurnDetails = ({
+  details,
+  working,
+  thinking,
+  createdAt,
+  panelOpen,
+  items,
+  onOpenPanel
+}: TurnDetailsProps) => {
+  const hasDetails = hasActivityDetails(details, thinking, items);
   if (!working && !hasDetails) return null;
 
   if (working) {

@@ -9,6 +9,7 @@ import {
   SessionManager
 } from '@earendil-works/pi-coding-agent';
 import { recentSessionsPage } from '@main/chat/recents';
+import { sessionSlashCommandItems, type SlashCommandItem } from '@main/chat/slash-commands';
 import { sessionWorkspacePath, tabFromSession, tabFromSessionStatus } from '@main/chat/tabs';
 import { textContent } from '@main/details';
 import { chatEvent } from '@main/events';
@@ -56,7 +57,10 @@ import {
   type SwitchWorkspaceResult,
   type WorkspaceFolder
 } from '@main/types';
-import { shell, type WebContents } from 'electron';
+import type { WebContents } from 'electron';
+import electron from 'electron';
+
+const { shell } = electron;
 
 const attachmentMaxAgeMs = 15 * 60 * 1000;
 
@@ -113,6 +117,11 @@ export class ChatService {
       ...(this.activeSessionId ? { sessionId: this.activeSessionId } : {}),
       thinkingLevel: this.selectedThinkingLevel
     };
+  }
+
+  async getSlashCommands(): Promise<SlashCommandItem[]> {
+    const session = await this.getSession();
+    return sessionSlashCommandItems(session);
   }
 
   async getModels(): Promise<{

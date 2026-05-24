@@ -1,5 +1,8 @@
 import { isMac, appIconPath, appMenuName, trayIconPath } from '@main/application';
-import { Menu, Tray, nativeImage, type MenuItemConstructorOptions } from 'electron';
+import type { MenuItemConstructorOptions, Tray as ElectronTray } from 'electron';
+import electron from 'electron';
+
+const { Menu, Tray, nativeImage } = electron;
 
 type MenuActions = {
   composerShortcut: string;
@@ -8,7 +11,7 @@ type MenuActions = {
   onShowSettings: () => void;
 };
 
-let tray: Tray | null = null;
+let tray: ElectronTray | null = null;
 
 const shortcutItem = (label: string, accelerator: string): MenuItemConstructorOptions => ({
   label,

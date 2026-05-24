@@ -28,7 +28,9 @@ import {
 } from '@main/window';
 import { activateWorkspaceAccess, deactivateWorkspaceAccess } from '@main/workspace/access';
 import { getCachedWorkspace, getWorkspace, onWorkspaceChanged } from '@main/workspace/index';
-import { app, globalShortcut, ipcMain, nativeImage, nativeTheme, shell } from 'electron';
+import electron from 'electron';
+
+const { app, globalShortcut, ipcMain, nativeImage, nativeTheme, shell } = electron;
 
 app.setName(appMenuName);
 

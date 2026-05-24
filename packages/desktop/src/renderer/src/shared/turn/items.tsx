@@ -9,7 +9,7 @@ import {
   splitDiffMetric
 } from '@renderer/shared/turn/activity';
 import { tw } from '@renderer/utils/tw';
-import type { TurnDetail } from '@renderer/utils/types';
+import type { TurnActivityItem, TurnDetail } from '@renderer/utils/types';
 import { AnimatePresence, motion } from 'motion/react';
 import { useState } from 'preact/hooks';
 
@@ -150,9 +150,39 @@ const ActivityDetailList = ({ details }: { details: TurnDetail[] }) => {
   );
 };
 
-export const ActivityItems = ({ details, thinking }: { details: TurnDetail[]; thinking: string }) => (
+const ActivitySequence = ({ items }: { items: TurnActivityItem[] }) => {
+  if (items.length === 0) return null;
+
+  return (
+    <motion.ul layout="position" transition={accordionLayoutTransition} class="m-0 flex list-none flex-col gap-2 p-0">
+      {items.map((item) =>
+        item.type === 'thinking' ? (
+          <motion.li key={item.id} layout="position" transition={accordionLayoutTransition} class="m-0">
+            <ThinkingSection thinking={item.text} />
+          </motion.li>
+        ) : (
+          <DetailItem key={item.id} detail={item.detail} />
+        )
+      )}
+    </motion.ul>
+  );
+};
+
+interface ActivityItemsProps {
+  details: TurnDetail[];
+  items: TurnActivityItem[];
+  thinking: string;
+}
+
+export const ActivityItems = ({ details, items, thinking }: ActivityItemsProps) => (
   <motion.div layout="position" transition={accordionLayoutTransition} class="flex flex-col gap-2">
-    <ThinkingSection thinking={thinking} />
-    <ActivityDetailList details={details} />
+    {items.length > 0 ? (
+      <ActivitySequence items={items} />
+    ) : (
+      <>
+        <ThinkingSection thinking={thinking} />
+        <ActivityDetailList details={details} />
+      </>
+    )}
   </motion.div>
 );

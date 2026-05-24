@@ -12,7 +12,7 @@ import { useChatSend } from '@renderer/shared/chat/send';
 import { useTurnSummary } from '@renderer/shared/chat/turn-summary';
 import { scrollSessionToBottom } from '@renderer/shared/turn/scroll';
 import { clearFinderItemsCache } from '@renderer/shared/use-finder-items';
-import { clearSkillsCache } from '@renderer/shared/skills';
+import { clearSlashCommandsCache } from '@renderer/shared/slash-commands';
 import { forgetWorkspace, rememberWorkspace } from '@renderer/shared/workspace/cache';
 import { primeWorkspaceFolders } from '@renderer/shared/workspace/folders';
 import { selectedModelKeyState } from '@renderer/state/chat';
@@ -261,7 +261,7 @@ export const useChat = ({ onShowChat, onShowSettings, textareaRef }: UseChatOpti
       } else {
         forgetWorkspace(result.status.workspacePath);
       }
-      clearSkillsCache();
+      clearSlashCommandsCache();
       clearFinderItemsCache();
       clearSession(options);
       setWorkspacePath(result.status.workspacePath);
