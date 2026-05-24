@@ -6,6 +6,7 @@ const { Menu, Tray, nativeImage } = electron;
 
 type MenuActions = {
   composerShortcut: string;
+  onCheckForUpdates: () => void;
   onNewSession: () => void;
   onQuickAccess: () => void;
   onShowSettings: () => void;
@@ -74,6 +75,7 @@ export const installApplicationMenu = ({
   onNewSession,
   onQuickAccess,
   onShowSettings,
+  onCheckForUpdates,
   composerShortcut
 }: MenuActions) => {
   if (!isMac) {
@@ -89,7 +91,7 @@ export const installApplicationMenu = ({
           { label: `About ${appMenuName}`, role: 'about' },
           {
             label: 'Check for Updates',
-            enabled: false
+            click: onCheckForUpdates
           },
           { type: 'separator' },
           {

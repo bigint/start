@@ -15,7 +15,7 @@ import {
   writeAppSettings
 } from '@main/settings';
 import { listSkills } from '@main/skills';
-import { registerUpdateIpc, startAutoUpdateChecks, stopAutoUpdateChecks } from '@main/updates';
+import { checkForUpdatesNow, registerUpdateIpc, startAutoUpdateChecks, stopAutoUpdateChecks } from '@main/updates';
 import {
   createMainWindow,
   hideComposerWindow,
@@ -98,6 +98,7 @@ const menuActions = () => ({
   onShowSettings: showSettings,
   onQuickAccess: () => toggleQuickAccess('menu'),
   onNewSession: () => void startNewSession('menu'),
+  onCheckForUpdates: () => void checkForUpdatesNow(),
   composerShortcut: appSettings?.composerShortcut ?? defaultAppSettings.composerShortcut
 });
 
