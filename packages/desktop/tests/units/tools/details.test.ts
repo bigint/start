@@ -11,7 +11,7 @@ describe('tool details', () => {
         toolName: 'browser_snapshot'
       })
     ).toMatchObject({
-      title: 'Reading browser'
+      title: 'Reading Browser'
     });
 
     expect(
@@ -22,7 +22,7 @@ describe('tool details', () => {
         toolName: 'browser_screenshot'
       })
     ).toMatchObject({
-      title: 'Capturing browser'
+      title: 'Capturing Browser'
     });
   });
 
@@ -35,7 +35,7 @@ describe('tool details', () => {
         toolName: 'browser_open'
       })
     ).toMatchObject({
-      title: 'Opened browser',
+      title: 'Opened Browser',
       detail: 'https://example.com/'
     });
 
@@ -47,12 +47,24 @@ describe('tool details', () => {
         toolName: 'browser_snapshot'
       })
     ).toMatchObject({
-      title: 'Read browser'
+      title: 'Read Browser'
+    });
+
+    expect(
+      toolEventDetail({
+        key: 'tool:3',
+        state: 'done',
+        args: { ref: 'e1' },
+        toolName: 'browser_click'
+      })
+    ).toMatchObject({
+      title: 'Clicked Browser'
     });
   });
 
   it('renders browser tool error labels without raw tool names', () => {
     expect(toolResultTitle('browser_open', true)).toBe('Open failed');
+    expect(toolResultTitle('browser_type', true)).toBe('Type failed');
     expect(
       toolEventDetail({
         key: 'tool:1',

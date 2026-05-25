@@ -9,7 +9,7 @@ import { Finder, type FinderItem, finderItemId, finderItemKey } from '@renderer/
 import { activeFinderToken, activeSlashCommandToken, commandMode, finderTokenPrefix } from '@renderer/shared/input';
 import { usePromptPlaceholder } from '@renderer/shared/placeholder';
 import { ScrollToBottom } from '@renderer/shared/turn/scroll-to-bottom';
-import { useFinderItems } from '@renderer/shared/use-finder-items';
+import { useFinderItems } from '@renderer/shared/finder/use-items';
 import { useSlashCommandItems } from '@renderer/shared/slash-commands';
 import { composerDockTransition } from '@renderer/ui/motion';
 import { tw } from '@renderer/utils/tw';
@@ -139,6 +139,10 @@ export const Composer = memo(
 
       if (!finderToken) return;
       if (item.type === 'command') return;
+      if (item.type === 'browser') {
+        onDraftChange(`${draft.slice(0, finderToken.start)}${finderTokenPrefix(finderToken.marker)}Browser `);
+        return;
+      }
 
       const suffix = item.type === 'directory' && enterDirectory ? '/' : ' ';
       const nextToken = `${finderTokenPrefix(finderToken.marker)}${item.path}${suffix}`;
@@ -227,11 +231,11 @@ export const Composer = memo(
         {!centered && <ScrollToBottom />}
         <Finder
           items={finderItems}
-          emptyLabel={slashCommandToken ? 'No matching commands' : 'No matching items'}
-          activeItemKey={selectedFinderKey}
           visible={finderVisible}
+          activeItemKey={selectedFinderKey}
           ariaLabel={slashCommandToken ? 'Slash commands' : 'Project files'}
           onSelect={(item) => completeFinderItem(item, item.type === 'directory')}
+          emptyLabel={slashCommandToken ? 'No matching commands' : 'No matching items'}
         />
         <Queue
           messages={queuedMessages}

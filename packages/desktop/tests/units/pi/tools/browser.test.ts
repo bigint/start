@@ -3,16 +3,22 @@ import { broadcastsByChannel, resetBroadcasts } from '../../../fakes/window.js';
 
 const captureBrowserScreenshotMock = vi.fn();
 const captureBrowserSnapshotMock = vi.fn();
+const clickInBrowserMock = vi.fn();
 const getBrowserStatusMock = vi.fn();
 const goBackInBrowserMock = vi.fn();
 const goForwardInBrowserMock = vi.fn();
+const pressInBrowserMock = vi.fn();
 const reloadBrowserMock = vi.fn();
+const typeInBrowserMock = vi.fn();
 
 vi.mock('@main/browser/index', () => ({
+  typeInBrowser: typeInBrowserMock,
   reloadBrowser: reloadBrowserMock,
+  pressInBrowser: pressInBrowserMock,
   goForwardInBrowser: goForwardInBrowserMock,
   goBackInBrowser: goBackInBrowserMock,
   getBrowserStatus: getBrowserStatusMock,
+  clickInBrowser: clickInBrowserMock,
   captureBrowserSnapshot: captureBrowserSnapshotMock,
   captureBrowserScreenshot: captureBrowserScreenshotMock
 }));
@@ -51,9 +57,13 @@ describe('browser tools', () => {
         text: 'Example page content',
         title: 'Example',
         links: [{ url: 'https://example.com/docs', text: 'Docs' }],
+        elements: [{ ref: 'e1', tag: 'button', text: 'Continue', role: 'button', label: '', disabled: false }],
         headings: [{ text: 'Example heading', level: 1 }]
       }
     });
+    clickInBrowserMock.mockResolvedValue({ ok: true });
+    typeInBrowserMock.mockResolvedValue({ ok: true });
+    pressInBrowserMock.mockReturnValue({ ok: true });
     getBrowserStatusMock.mockReturnValue({
       url: 'https://example.com/',
       open: true,
@@ -76,6 +86,9 @@ describe('browser tools', () => {
       'browser_back',
       'browser_forward',
       'browser_reload',
+      'browser_click',
+      'browser_type',
+      'browser_press',
       'browser_screenshot',
       'browser_snapshot'
     ]);
@@ -144,6 +157,16 @@ describe('browser tools', () => {
     expect(captureBrowserScreenshotMock).toHaveBeenCalledOnce();
   });
 
+  it('delegates browser interaction actions', async () => {
+    await toolByName('browser_click').execute('call-1', { ref: 'e1' });
+    await toolByName('browser_type').execute('call-2', { ref: 'e2', text: 'hello', clear: true });
+    await toolByName('browser_press').execute('call-3', { key: 'Enter' });
+
+    expect(clickInBrowserMock).toHaveBeenCalledWith('e1');
+    expect(typeInBrowserMock).toHaveBeenCalledWith({ ref: 'e2', text: 'hello', clear: true });
+    expect(pressInBrowserMock).toHaveBeenCalledWith('Enter');
+  });
+
   it('returns current browser page content snapshots', async () => {
     const result = await toolByName('browser_snapshot').execute('call-1', {});
 
@@ -153,6 +176,7 @@ describe('browser tools', () => {
       text: 'Example page content',
       title: 'Example',
       links: [{ url: 'https://example.com/docs', text: 'Docs' }],
+      elements: [{ ref: 'e1', tag: 'button', text: 'Continue', role: 'button', label: '', disabled: false }],
       headings: [{ text: 'Example heading', level: 1 }]
     });
   });
