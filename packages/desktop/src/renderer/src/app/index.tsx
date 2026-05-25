@@ -1,16 +1,17 @@
 import type { EffortLevel } from '@preload/index';
 import { usePendingAttachments } from '@renderer/app/attachments';
+import { useBrowserPanel } from '@renderer/app/browser';
 import { useComposerOverlay } from '@renderer/app/composer-overlay';
 import { routeForSession, useAppNavigation } from '@renderer/app/navigation';
-import { useRendererRuntime } from '@renderer/app/runtime';
-import { useSessionPanels } from '@renderer/app/session/panels';
-import { useSessionRoute } from '@renderer/app/session/route';
-import { AppShell } from '@renderer/app/shell';
 import {
   AppSidePanel,
   sidePanelLabel as getSidePanelLabel,
   sidePanelMaxRatio as getSidePanelMaxRatio
-} from '@renderer/app/side-panel';
+} from '@renderer/app/panel';
+import { useRendererRuntime } from '@renderer/app/runtime';
+import { useSessionPanels } from '@renderer/app/session/panels';
+import { useSessionRoute } from '@renderer/app/session/route';
+import { AppShell } from '@renderer/app/shell';
 import { prewarmMarkdownRenderer } from '@renderer/markdown';
 import { Composer } from '@renderer/shared/chat/index';
 import { useChat } from '@renderer/shared/chat/use-chat';
@@ -36,6 +37,7 @@ export const App = () => {
     closeSidePanel,
     openActivityPanel,
     openSettingsPanel,
+    openBrowserPanel,
     openShortcutsPanel,
     activityPanelVisible,
     settingsPanelVisible,
@@ -63,6 +65,8 @@ export const App = () => {
     setSurface('main');
     openShortcutsPanel();
   }, [openShortcutsPanel, setSurface, surface]);
+
+  const browserPanel = useBrowserPanel({ openPanel: openBrowserPanel, setSurface });
 
   const toggleSettings = useCallback(() => {
     setSurface('main');
@@ -249,9 +253,11 @@ export const App = () => {
       mode={renderedSidePanelMode}
       providers={authProviders}
       turnId={activityTurnId}
+      browserNavigation={browserPanel.navigation}
       workspacePath={workspacePath}
       onSaveApiKey={saveApiKey}
       composerShortcut={composerShortcut}
+      onBrowserUrlOpened={browserPanel.clear}
       onLoginSubscription={loginSubscription}
       onDisconnectProvider={disconnectProvider}
       onComposerShortcutChange={updateComposerShortcut}
