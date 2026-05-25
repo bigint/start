@@ -1,8 +1,10 @@
 import { execFile } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { release } from 'node:os';
 import { dirname, join } from 'node:path';
 import { appVersion, isProd } from '@main/application';
+import electron from 'electron';
 import {
   POSTHOG_HOST,
   ANALYTICS_FLUSH_AT,
@@ -18,11 +20,11 @@ import { startDir } from '@main/storage';
 import { PostHog } from 'posthog-node';
 
 type AnalyticsPropertyValue = null | number | string | boolean;
-
 type AnalyticsProperties = Record<string, AnalyticsPropertyValue>;
 
 const ANALYTICS_EVENTS = [
   'app_opened',
+  'app_closed',
   'prompt_sent',
   'command_sent',
   'api_key_added',
@@ -40,17 +42,12 @@ const ANALYTICS_EVENTS = [
 
 export type AnalyticsEvent = (typeof ANALYTICS_EVENTS)[number];
 
+const { app } = electron;
+
 let distinctId = '';
+let launchStartMs = 0;
 let client: PostHog | null = null;
 let identifiedUsername: string | undefined;
-
-const isAnalyticsPropertyValue = (value: unknown): value is AnalyticsPropertyValue => {
-  const isNull = value === null;
-  const isString = typeof value === 'string';
-  const isNumber = typeof value === 'number';
-  const isBoolean = typeof value === 'boolean';
-  return isNull || isString || isNumber || isBoolean;
-};
 
 const readText = (path: string) => {
   const text = readFileSync(path, 'utf8').trim();
@@ -92,21 +89,6 @@ const loadDistinctId = () => {
 const baseProperties = (): AnalyticsProperties => ({
   app_version: appVersion,
   platform: process.platform
-});
-
-const sanitizeProperties = (properties?: Record<string, unknown>): AnalyticsProperties => {
-  const sanitized: AnalyticsProperties = {};
-  for (const [key, value] of Object.entries(properties ?? {})) {
-    if (isAnalyticsPropertyValue(value)) {
-      sanitized[key] = value;
-    }
-  }
-  return sanitized;
-};
-
-const captureProperties = (properties?: Record<string, unknown>): AnalyticsProperties => ({
-  ...baseProperties(),
-  ...sanitizeProperties(properties)
 });
 
 const identifyProperties = (username: string): AnalyticsProperties => ({
@@ -188,13 +170,12 @@ const readGitUsername = async () => {
 const readDeviceUsername = async () =>
   (await readGithubUsername()) ?? (await readGitlabUsername()) ?? (await readGitUsername());
 
-const canInitializeAnalytics = () => isProd;
-
 export const initAnalytics = () => {
-  if (!canInitializeAnalytics()) return;
+  if (!isProd) return;
   if (client) return;
 
   distinctId = loadDistinctId();
+  launchStartMs = Date.now();
   identifiedUsername = readAnalyticsValue(ANALYTICS_USERNAME_STORAGE_NAME);
   client = new PostHog(POSTHOG_PROJECT_KEY, {
     host: POSTHOG_HOST,
@@ -211,19 +192,29 @@ export const identifyDeviceUser = async () => {
 
   const username = await readDeviceUsername();
   if (!username) return;
-
-  const isSameUsername = identifiedUsername === username;
-  if (isSameUsername) return;
+  if (identifiedUsername === username) return;
 
   identifiedUsername = username;
   writeAnalyticsValue(ANALYTICS_USERNAME_STORAGE_NAME, username);
   analytics.identify({
     distinctId,
+    disableGeoip: true,
     properties: identifyProperties(username)
   });
 };
 
-export const trackAnalyticsEvent = (event: AnalyticsEvent, properties?: Record<string, unknown>) => {
+const launchPersonProperties = () => {
+  const locale = app.getLocale();
+  return {
+    $set: {
+      arch: process.arch,
+      os_version: release(),
+      ...(locale ? { locale } : {})
+    }
+  };
+};
+
+export const trackAnalyticsEvent = (event: AnalyticsEvent, properties: AnalyticsProperties = {}) => {
   const analytics = client;
   if (!analytics) return;
   if (!distinctId) return;
@@ -231,14 +222,20 @@ export const trackAnalyticsEvent = (event: AnalyticsEvent, properties?: Record<s
   analytics.capture({
     event,
     distinctId,
-    properties: captureProperties(properties)
+    disableGeoip: true,
+    properties: {
+      ...baseProperties(),
+      ...properties,
+      ...(event === 'app_opened' ? launchPersonProperties() : {})
+    }
   });
 };
 
 export const shutdownAnalytics = async () => {
   const analytics = client;
-  client = null;
   if (!analytics) return;
 
+  trackAnalyticsEvent('app_closed', { session_duration_ms: Date.now() - launchStartMs });
+  client = null;
   await analytics.shutdown(ANALYTICS_SHUTDOWN_TIMEOUT_MS);
 };
