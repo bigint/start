@@ -27,6 +27,7 @@
 - Do not show loaders, spinners, or hidden status text while session messages hydrate; keep the session surface empty and layout-stable until content arrives.
 - Keep primary conversational content direct; place diagnostics, metadata, and tool output behind concise collapsed details.
 - Group files that share a domain or filename prefix into a domain folder instead of leaving flat clusters like `workspace-*` files.
+- Prefer single-word filenames. When two or more files share a multi-word prefix (e.g. `provider-form`, `provider-list`), promote that prefix to a folder and shorten each child to its distinguishing word (`provider/form.tsx`, `provider/list.tsx`). A lone, unambiguous multi-word name is fine; do not fold framework conventions such as `use-*` hooks.
 - Inside domain folders, keep child filenames short and precise; avoid repeating the folder/domain name unless it improves clarity.
 - Prefer descriptive file names over generic ones (`items`, `panels`, etc.) so module purpose is obvious from filename.
 - Name component files with clear component words only; avoid unnecessary domain prefixes or role suffixes like `composer-model-picker`, `thinking-button`, `list`, or `card` when the parent folder or component purpose is already clear.
@@ -47,6 +48,8 @@
 - Extract long boolean expressions, chained fallbacks, and repeated validation checks into named helpers when a name makes the condition easier to scan.
 - Keep agent tools and page-content extraction bounded with explicit time, size, and count limits; prefer targeted structured output over broad dumps.
 - Avoid placeholder ternaries such as `condition ? '' : value`; split branches or extract helpers so each path computes only what it uses.
+- In conditional ternary expressions, the truthy branch should produce the meaningful value; reserve the falsy branch for the empty or absent fallback. Flip predicates like `state === target ? '' : target` to `state !== target ? target : ''` so the affirmative path carries the value.
+- Avoid the `void` operator when a clearer alternative exists. Inside async functions reach for `await`; for fire-and-forget calls already protected by an internal `try/catch` or a chained `.catch`, drop the `void` and rely on TypeScript's return-type covariance (`() => Promise<void>` assigns to `() => void`). Only keep `void` when the discard is otherwise ambiguous to the reader.
 - Use hover backgrounds only when an inline control needs a filled selected affordance; otherwise prefer text-color feedback.
 - For small icon-only controls, keep the visual size stable and expand the clickable hit area with a pseudo-element such as `before:absolute before:-inset-2` when precision clicking would be frustrating.
 - For expandable rows, keep identifiers inline in titles and reserve expanded content for supporting output, diffs, or detail bodies.

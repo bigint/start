@@ -2,7 +2,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import preact from '@preact/preset-vite';
 import tailwindcss from '@tailwindcss/vite';
-import { defineConfig, externalizeDepsPlugin } from 'electron-vite';
+import { defineConfig } from 'electron-vite';
 
 const root = fileURLToPath(new URL('.', import.meta.url));
 
@@ -15,14 +15,17 @@ const aliases = {
 export default defineConfig({
   main: {
     resolve: { alias: aliases },
-    plugins: [externalizeDepsPlugin()],
     build: {
       minify: true,
       sourcemap: false,
+      externalizeDeps: false,
       reportCompressedSize: false,
       rollupOptions: {
+        external: ['electron', /^node:/, '@silvia-odwyer/photon-node'],
         output: {
-          format: 'es'
+          format: 'cjs',
+          codeSplitting: false,
+          entryFileNames: 'index.cjs'
         }
       }
     }
