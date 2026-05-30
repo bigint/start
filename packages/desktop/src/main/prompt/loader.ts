@@ -1,17 +1,20 @@
+import { homedir } from 'node:os';
 import { join, sep } from 'node:path';
 import { DefaultResourceLoader } from '@earendil-works/pi-coding-agent';
 import { baseDir } from '@main/application';
-import { buildStartSystemPrompt } from '@main/system-prompt';
+import { buildStartSystemPrompt, createStartPromptExtension } from '@main/prompt/index';
 
+const piConfigSegment = `${sep}.pi${sep}`;
 const startAgentDir = join(baseDir, 'agent');
 const startPromptsDir = join(baseDir, 'prompts');
+const startSkillsDir = join(startAgentDir, 'skills');
 const startPromptsPrefix = `${startPromptsDir}${sep}`;
-const piConfigSegment = `${sep}.pi${sep}`;
-const systemPrompt = buildStartSystemPrompt(startPromptsDir);
+const globalSkillsDir = join(homedir(), '.agents', 'skills');
+const systemPrompt = buildStartSystemPrompt(startPromptsDir, startSkillsDir);
 
 export const createStartResourceLoader = async (cwd: string) => {
   const projectSkillsDir = join(cwd, '.agents', 'skills');
-  const projectSkillsPrefix = `${projectSkillsDir}${sep}`;
+  const skillDirs = [startSkillsDir, globalSkillsDir, projectSkillsDir];
 
   const loader = new DefaultResourceLoader({
     cwd,
@@ -23,12 +26,10 @@ export const createStartResourceLoader = async (cwd: string) => {
     appendSystemPrompt: [],
     agentDir: startAgentDir,
     noPromptTemplates: false,
-    additionalSkillPaths: [projectSkillsDir],
-    additionalPromptTemplatePaths: [startPromptsDir],
     skillsOverride: (base) => ({
       ...base,
-      skills: base.skills.filter(
-        (skill) => skill.sourceInfo.path === projectSkillsDir || skill.sourceInfo.path.startsWith(projectSkillsPrefix)
+      skills: base.skills.filter((skill) =>
+        skillDirs.some((dir) => skill.sourceInfo.path === dir || skill.sourceInfo.path.startsWith(`${dir}${sep}`))
       )
     }),
     promptsOverride: (base) => ({
@@ -38,7 +39,10 @@ export const createStartResourceLoader = async (cwd: string) => {
     extensionsOverride: (base) => ({
       ...base,
       extensions: base.extensions.filter((extension) => !extension.sourceInfo?.path?.includes(piConfigSegment))
-    })
+    }),
+    additionalSkillPaths: skillDirs,
+    additionalPromptTemplatePaths: [startPromptsDir],
+    extensionFactories: [createStartPromptExtension(startPromptsDir, startSkillsDir)]
   });
 
   await loader.reload();

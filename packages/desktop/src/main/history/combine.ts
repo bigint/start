@@ -9,10 +9,10 @@ const detailOnlyTurn = (turn: HistoryTurn) => {
 
 const pendingTurn = (details: HistoryTurnDetail[], thinking: string, createdAt: number, index: number): HistoryTurn => {
   const turn: HistoryTurn = {
-    id: `work:${createdAt}:${index}`,
-    role: 'event',
     text: '',
-    createdAt
+    createdAt,
+    role: 'event',
+    id: `work:${createdAt}:${index}`
   };
 
   if (details.length > 0) turn.details = details;
@@ -36,11 +36,11 @@ const mergeWork = (turn: HistoryTurn, details: HistoryTurnDetail[], thinking: st
 };
 
 export const combineHistoryTurns = (turns: HistoryTurn[]) => {
-  const result: HistoryTurn[] = [];
-  let pendingDetails: HistoryTurnDetail[] = [];
   let pendingThinking = '';
   let pendingCreatedAt = 0;
   let lastAssistantIndex = -1;
+  const result: HistoryTurn[] = [];
+  let pendingDetails: HistoryTurnDetail[] = [];
 
   const clearPending = () => {
     pendingDetails = [];

@@ -19,17 +19,17 @@ type RootItemsCacheEntry = {
 };
 
 type ScoredRootItem = {
-  item: RootItem;
   score: number;
+  item: RootItem;
 };
 
-const rootItemsCache = new Map<string, RootItemsCacheEntry>();
-const rootItemsCacheMaxEntries = 80;
-const rootItemsCacheMs = 3000;
 const rootItemsLimit = 80;
+const rootItemsCacheMs = 3000;
 const gitCommandTimeoutMs = 8000;
 const workspaceSearchLimit = 120;
 const filesystemRoot = homedir();
+const rootItemsCacheMaxEntries = 80;
+const rootItemsCache = new Map<string, RootItemsCacheEntry>();
 const ignoredDirectoryNames = new Set(['.git', 'node_modules']);
 
 const pruneCache = (cache: Map<string, RootItemsCacheEntry>, now = Date.now()) => {
@@ -62,10 +62,10 @@ const itemSort = (first: RootItem, second: RootItem) => {
 };
 
 const rootItem = (itemPath: string, type: RootItem['type']): RootItem => ({
-  name: itemName(itemPath),
+  type,
   path: itemPath,
-  ...(itemName(itemPath) !== itemPath ? { description: itemPath } : {}),
-  type
+  name: itemName(itemPath),
+  ...(itemName(itemPath) !== itemPath ? { description: itemPath } : {})
 });
 
 const queryPath = (relativePath: string) => {
@@ -81,8 +81,8 @@ const splitScopedQuery = (relativePath: string) => {
   if (slashIndex === -1) return { folderPath: '', query: normalizedPath };
 
   return {
-    folderPath: normalizedPath.slice(0, slashIndex),
-    query: normalizedPath.slice(slashIndex + 1)
+    query: normalizedPath.slice(slashIndex + 1),
+    folderPath: normalizedPath.slice(0, slashIndex)
   };
 };
 
