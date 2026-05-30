@@ -4,14 +4,24 @@ import type { BrowserNavigation } from '@renderer/shared/browser/navigation';
 import { BrowserReloadIcon } from '@renderer/shared/browser/reload';
 import { formatBrowserAddress } from '@renderer/shared/browser/url';
 import { useBrowserBounds } from '@renderer/shared/browser/use-bounds';
+import { useBrowserInspect } from '@renderer/shared/browser/use-inspect';
+import { useBrowserScreenshot } from '@renderer/shared/browser/use-screenshot';
 import { usePanelMotion } from '@renderer/shared/panel/context';
-import { CheckIcon, BrowserEmptyIcon, ScreenshotIcon, ChevronLeftIcon, ChevronRightIcon } from '@renderer/ui/icons';
+import {
+  BrowserEmptyIcon,
+  CheckIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  ScreenshotIcon,
+  SquareCursorIcon
+} from '@renderer/ui/icons';
 import type { JSX } from 'preact';
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 
 interface BrowserPanelProps {
-  navigation: BrowserNavigation;
   onUrlOpened: () => void;
+  navigation: BrowserNavigation;
+  onInspectText: (text: string) => void;
 }
 
 const emptyStatus: BrowserStatus = {
@@ -23,26 +33,24 @@ const emptyStatus: BrowserStatus = {
   canGoForward: false
 };
 
-export const BrowserPanel = ({ navigation, onUrlOpened }: BrowserPanelProps) => {
+export const BrowserPanel = ({ navigation, onUrlOpened, onInspectText }: BrowserPanelProps) => {
   const mountedRef = useRef(true);
-  const copyTimerRef = useRef<number>(0);
   const viewportRef = useRef<HTMLDivElement>(null);
-  const [address, setAddress] = useState('');
   const [error, setError] = useState('');
+  const [address, setAddress] = useState('');
   const [editing, setEditing] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [active, setActive] = useState(() => Boolean(navigation.url));
   const [status, setStatus] = useState<BrowserStatus>(emptyStatus);
+  const [active, setActive] = useState(() => Boolean(navigation.url));
   const { moving: panelMoving } = usePanelMotion();
   const syncBounds = useBrowserBounds({ active, moving: panelMoving, viewportRef });
+  const { inspecting, toggle: toggleInspect } = useBrowserInspect({ onText: onInspectText });
+  const { copied, capture: captureScreenshot } = useBrowserScreenshot({ onError: setError });
 
   const applyStatus = useCallback(
     (nextStatus: BrowserStatus) => {
       if (!mountedRef.current) return;
-
       setStatus(nextStatus);
       setActive(Boolean(nextStatus.url || nextStatus.loading));
-      if (!nextStatus.url && !nextStatus.loading) setError('');
       if (!editing) setAddress(formatBrowserAddress(nextStatus.url));
     },
     [editing]
@@ -50,8 +58,8 @@ export const BrowserPanel = ({ navigation, onUrlOpened }: BrowserPanelProps) => 
 
   const openAddress = useCallback(
     async (value: string) => {
-      const nextAddress = value.trim();
-      if (!nextAddress) {
+      const next = value.trim();
+      if (!next) {
         setActive(false);
         setError('');
         setStatus(emptyStatus);
@@ -91,66 +99,42 @@ export const BrowserPanel = ({ navigation, onUrlOpened }: BrowserPanelProps) => 
   );
 
   const goBack = useCallback(() => {
-    void window.pi.app.browserBack().then((result) => result.status && applyStatus(result.status));
+    window.pi.app.browserBack().then((result) => result.status && applyStatus(result.status));
   }, [applyStatus]);
 
   const goForward = useCallback(() => {
-    void window.pi.app.browserForward().then((result) => result.status && applyStatus(result.status));
+    window.pi.app.browserForward().then((result) => result.status && applyStatus(result.status));
   }, [applyStatus]);
 
   const reloadOrStop = useCallback(() => {
     const action = status.loading ? window.pi.app.browserStop : window.pi.app.browserReload;
-    void action().then((result) => result.status && applyStatus(result.status));
+    action().then((result) => result.status && applyStatus(result.status));
   }, [applyStatus, status.loading]);
 
-  const refreshLabel = status.loading ? 'Stop loading' : 'Refresh';
-  const screenshotLabel = copied ? 'Copied' : 'Screenshot';
-  const viewportMessage = error || 'Enter a URL to browse';
-
-  const applyScreenshotStatus = useCallback((result: BrowserActionResult) => {
-    if (!mountedRef.current) return;
-
-    if (!result.ok) {
-      setError(result.error ?? 'Could not capture the page.');
-      return;
-    }
-
-    setError('');
-    setCopied(true);
-    copyTimerRef.current = window.setTimeout(() => setCopied(false), 1400);
-  }, []);
-
-  const captureScreenshot = useCallback(() => {
-    window.clearTimeout(copyTimerRef.current);
-    void window.pi.app
-      .browserScreenshot()
-      .then(applyScreenshotStatus)
-      .catch(() => applyScreenshotStatus({ ok: false, error: 'Could not capture the page.' }));
-  }, [applyScreenshotStatus]);
-
-  useEffect(() => {
-    return window.pi.app.onBrowserStatus(applyStatus);
-  }, [applyStatus]);
+  useEffect(() => window.pi.app.onBrowserStatus(applyStatus), [applyStatus]);
 
   useEffect(() => {
     const url = navigation.url;
     if (!url) return;
-
     setAddress(formatBrowserAddress(url));
     void openAddress(url);
     onUrlOpened();
   }, [navigation.id, navigation.url, onUrlOpened, openAddress]);
 
-  useEffect(() => {
-    return () => {
+  useEffect(
+    () => () => {
       mountedRef.current = false;
-      window.clearTimeout(copyTimerRef.current);
-    };
-  }, []);
+    },
+    []
+  );
+
+  const refreshLabel = status.loading ? 'Stop loading' : 'Refresh';
+  const screenshotLabel = copied ? 'Copied' : 'Screenshot';
+  const inspectLabel = inspecting ? 'Stop annotating' : 'Annotate';
 
   return (
     <div class="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-canvas/95 text-ink backdrop-blur-xl dark:bg-canvas/90">
-      <div class="flex h-12 min-w-0 shrink-0 items-center gap-2 border-b border-line px-4">
+      <div class="flex h-12 min-w-0 shrink-0 items-center gap-0 border-b border-line px-2">
         <BrowserButton label="Back" disabled={!status.canGoBack} onClick={goBack}>
           <ChevronLeftIcon class="size-4" />
         </BrowserButton>
@@ -173,6 +157,16 @@ export const BrowserPanel = ({ navigation, onUrlOpened }: BrowserPanelProps) => 
           />
         </form>
         <BrowserButton
+          label={inspectLabel}
+          active={inspecting}
+          disabled={!status.url}
+          onClick={toggleInspect}
+          tooltipLabel={inspectLabel}
+          tooltipSide="left"
+        >
+          <SquareCursorIcon class="size-4" strokeWidth={inspecting ? 2 : 1.5} />
+        </BrowserButton>
+        <BrowserButton
           label={screenshotLabel}
           disabled={!status.url}
           onClick={captureScreenshot}
@@ -182,15 +176,13 @@ export const BrowserPanel = ({ navigation, onUrlOpened }: BrowserPanelProps) => 
           {copied ? <CheckIcon class="size-4" /> : <ScreenshotIcon class="size-4" strokeWidth={1.5} />}
         </BrowserButton>
       </div>
-      {error && active && (
-        <div class="shrink-0 border-b border-line px-3 py-2 text-xs leading-5 text-danger">{error}</div>
-      )}
+      {error && <div class="shrink-0 border-b border-line px-3 py-2 text-xs leading-5 text-danger">{error}</div>}
       <div ref={viewportRef} class="relative min-h-0 min-w-0 flex-1 overflow-hidden">
         {!active && (
           <div class="absolute inset-0 grid place-items-center px-8 text-center">
             <div class="grid justify-items-center gap-3 text-soft">
-              <BrowserEmptyIcon class="size-9" strokeWidth={1.5} />
-              <p class="max-w-56 text-sm leading-5">{viewportMessage}</p>
+              <BrowserEmptyIcon class="size-7" strokeWidth={1.5} />
+              <p class="max-w-56 text-sm leading-5">Enter a URL to browse</p>
             </div>
           </div>
         )}

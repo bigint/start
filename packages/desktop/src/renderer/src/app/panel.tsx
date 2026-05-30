@@ -10,10 +10,11 @@ import { memo } from 'preact/compat';
 interface AppSidePanelProps {
   mode: SidePanelMode;
   workspacePath: string;
-  browserNavigation: BrowserNavigation;
   composerShortcut: string;
   onBrowserUrlOpened: () => void;
   providers: ProviderAuthStatus[];
+  browserNavigation: BrowserNavigation;
+  onBrowserInspectText: (text: string) => void;
   onLoginSubscription: (provider: string) => Promise<void>;
   onDisconnectProvider: (provider: string) => Promise<void>;
   onSaveApiKey: (provider: string, apiKey: string) => Promise<void>;
@@ -38,16 +39,24 @@ export const AppSidePanel = memo(
     mode,
     providers,
     workspacePath,
-    browserNavigation,
     onSaveApiKey,
-    onBrowserUrlOpened,
     composerShortcut,
+    browserNavigation,
+    onBrowserUrlOpened,
     onLoginSubscription,
+    onBrowserInspectText,
     onDisconnectProvider,
     onComposerShortcutChange
   }: AppSidePanelProps) => {
     if (mode === 'git') return <GitChangesPanel path={workspacePath} />;
-    if (mode === 'browser') return <BrowserPanel navigation={browserNavigation} onUrlOpened={onBrowserUrlOpened} />;
+    if (mode === 'browser')
+      return (
+        <BrowserPanel
+          navigation={browserNavigation}
+          onUrlOpened={onBrowserUrlOpened}
+          onInspectText={onBrowserInspectText}
+        />
+      );
 
     if (mode === 'settings') {
       return (

@@ -1,4 +1,5 @@
 import { isDev } from '@main/application';
+import { attachInspectListener, startInspect, stopInspect } from '@main/browser/inspect/index';
 import { clickBrowserElement, typeBrowserText } from '@main/browser/interaction';
 import { normalizeBrowserUrl } from '@main/browser/url';
 import { readBrowserSnapshot, type BrowserSnapshot } from '@main/browser/snapshot';
@@ -131,6 +132,7 @@ const createBrowserView = () => {
   view.webContents.on('did-navigate', sendStatus);
   view.webContents.on('did-navigate-in-page', sendStatus);
   view.webContents.on('page-title-updated', sendStatus);
+  attachInspectListener(view.webContents);
   return view;
 };
 
@@ -161,6 +163,7 @@ const closeBrowserView = () => {
   browserView = null;
   lastBounds = null;
   sendStatus();
+  sendToRendererWindows('app:browser-inspect-state', false);
 };
 
 const attachBrowserView = (window: ElectronBrowserWindow) => {
@@ -261,6 +264,10 @@ export const stopBrowser = (): BrowserActionResult => {
   sendStatus();
   return { ok: true, status: statusFromView() };
 };
+
+export const startBrowserInspect = (): Promise<BrowserActionResult> => startInspect(browserView?.webContents ?? null);
+
+export const stopBrowserInspect = (): Promise<BrowserActionResult> => stopInspect(browserView?.webContents ?? null);
 
 export const captureBrowserScreenshot = async (): Promise<BrowserActionResult> => {
   if (!browserView) return { ok: false, error: closedPanelError, status: statusFromView() };

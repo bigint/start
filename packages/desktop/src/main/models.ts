@@ -6,13 +6,9 @@ export interface AllowedModel {
 }
 
 export const models: readonly AllowedModel[] = [
-  { provider: 'openai', id: 'gpt-5.5-pro' },
   { provider: 'openai', id: 'gpt-5.5' },
-  { provider: 'openai', id: 'gpt-5.4-pro' },
   { provider: 'openai', id: 'gpt-5.4' },
-  { provider: 'openai', id: 'gpt-5.3-codex-spark' },
-  { provider: 'anthropic', id: 'claude-opus-4-7' },
-  { provider: 'anthropic', id: 'claude-opus-4-6' },
+  { provider: 'anthropic', id: 'claude-opus-4-8' },
   { provider: 'anthropic', id: 'claude-sonnet-4-6' },
   { provider: 'anthropic', id: 'claude-haiku-4-5' },
   { provider: 'google', id: 'gemini-3.1-pro-preview' },
