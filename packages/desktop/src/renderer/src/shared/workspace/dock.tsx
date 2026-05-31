@@ -8,6 +8,8 @@ import {
   bottomBubbleRevealTransition,
   bottomBubbleVisibleMotion
 } from '@renderer/ui/motion';
+import { EditIcon } from '@renderer/ui/icons';
+import { Tooltip } from '@renderer/ui/tooltip';
 import { tw } from '@renderer/utils/tw';
 import { AnimatePresence, motion } from 'motion/react';
 import { memo } from 'preact/compat';
@@ -16,6 +18,8 @@ interface WorkspaceDockProps {
   isGenerating: boolean;
   workspacePath: string;
   activeSessionId: string;
+  showNewSession: boolean;
+  onNewSession: () => void;
   onChooseDirectory: () => void;
   onSelectWorkspace: (path: string) => void;
   onOpenSession: (session: RecentSession) => Promise<boolean>;
@@ -26,7 +30,9 @@ export const WorkspaceDock = memo(
     workspacePath,
     isGenerating,
     activeSessionId,
+    onNewSession,
     onOpenSession,
+    showNewSession,
     onChooseDirectory,
     onSelectWorkspace
   }: WorkspaceDockProps) => {
@@ -50,6 +56,7 @@ export const WorkspaceDock = memo(
               exit={{ ...bottomBubbleHiddenMotion, transition: bottomBubbleHideTransition }}
             >
               <Workspace
+                collapsed={showNewSession}
                 workspacePath={workspacePath}
                 onChooseDirectory={onChooseDirectory}
                 onSelectWorkspace={onSelectWorkspace}
@@ -60,6 +67,18 @@ export const WorkspaceDock = memo(
                 activeSessionId={activeSessionId}
                 onOpenSession={onOpenSession}
               />
+              {showNewSession && (
+                <Tooltip label="New session">
+                  <button
+                    type="button"
+                    aria-label="New session"
+                    onClick={onNewSession}
+                    class="grid size-11.5 place-items-center rounded-full border-0 bg-composer text-ink shadow-shell outline-0 transition-colors select-none hover:bg-control focus-visible:bg-control"
+                  >
+                    <EditIcon class="size-5" />
+                  </button>
+                </Tooltip>
+              )}
             </motion.div>
           )}
         </AnimatePresence>

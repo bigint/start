@@ -251,6 +251,7 @@ export const App = () => {
   );
 
   const sessionRoutePending = surface === 'main' && route.name === 'session' && loadedSessionId !== route.sessionId;
+  const hasTurns = turnCount > 0 || sessionRoutePending;
   const noProvidersConfigured = modelsLoaded && models.length === 0;
   const sidePanelLabel = getSidePanelLabel(sidePanelMode);
   const sidePanelMaxRatio = getSidePanelMaxRatio(sidePanelMode);
@@ -334,6 +335,8 @@ export const App = () => {
       gitPanelVisible={gitPanelVisible}
       isGenerating={isGenerating}
       activeSessionId={activeSessionId}
+      onNewSession={startNewSession}
+      showNewSession={hasTurns}
       onOpenSettings={toggleSettings}
       sessionRoutePending={sessionRoutePending}
       settingsPanelVisible={settingsPanelVisible}
@@ -344,7 +347,7 @@ export const App = () => {
       sessionViewActive={sessionViewActive}
       onSelectWorkspace={selectWorkspaceFromDock}
       onSidePanelCollapse={closeSidePanel}
-      mainComposer={renderComposer(false, turnCount > 0 || sessionRoutePending)}
+      mainComposer={renderComposer(false, hasTurns)}
       overlayComposer={renderComposer(true, false)}
     />
   );

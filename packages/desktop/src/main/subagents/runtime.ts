@@ -16,11 +16,6 @@ import type { SubagentRunResult, SubagentTaskInput, SubagentRunSnapshot } from '
 import { countLabel } from '@main/details';
 import type { EffortLevel, SubagentActivity } from '@main/types';
 
-const maxConcurrentAgents = 4;
-const maxLogsPerAgent = 24;
-const maxSummaryLength = 4000;
-const subagentTimeoutMs = 10 * 60 * 1000;
-
 interface RunSubagentsOptions {
   cwd: string;
   signal?: AbortSignal;
@@ -35,11 +30,6 @@ interface RunSubagentsOptions {
   model: ModelRegistry['getAvailable'] extends () => Array<infer ModelItem> ? ModelItem : never;
 }
 
-const truncateSummary = (value: string, maxLength = maxSummaryLength) => {
-  const text = value.trim();
-  return text.length > maxLength ? `${text.slice(0, maxLength - 3)}...` : text;
-};
-
 const resultText = (agents: SubagentActivity[]) =>
   agents
     .map((agent) => {
@@ -50,39 +40,12 @@ const resultText = (agents: SubagentActivity[]) =>
     .join('\n\n');
 
 const finalPrompt = (task: string) =>
-  `You are a sub-agent working on one focused part of the parent agent's request.
+  `You are a sub-agent handling one focused task for the parent agent.
 
 Task:
 ${task}
 
-Work independently. Keep your final answer concise and useful to the parent agent. Include concrete file paths, findings, and blockers when relevant.`;
-
-const eventLog = (
-  event: Parameters<AgentSession['subscribe']>[0] extends (event: infer Event) => void ? Event : never
-) => {
-  switch (event.type) {
-    case 'tool_execution_start':
-      return `Using ${event.toolName}`;
-    case 'tool_execution_end':
-      return event.isError ? `${event.toolName} failed` : `Finished ${event.toolName}`;
-    case 'message_update': {
-      const update = event.assistantMessageEvent;
-      if (update.type === 'toolcall_end') return `Preparing ${update.toolCall.name}`;
-      return '';
-    }
-    case 'agent_start':
-      return 'Started';
-    case 'agent_end':
-      return 'Finished';
-    default:
-      return '';
-  }
-};
-
-const pushLog = (agent: SubagentActivity, log: string) => {
-  if (!log) return;
-  agent.logs = [...agent.logs, log].slice(-maxLogsPerAgent);
-};
+Work independently. Return only what the task asks for: concrete findings, file paths, and blockers. Be precise and brief — no preamble, no restating the task, nothing outside its scope.`;
 
 const abortSession = async (session: AgentSession) => {
   session.abortBash();
@@ -121,23 +84,6 @@ const runWithAbort = async (session: AgentSession, signal: AbortSignal | null, t
   }
 };
 
-const runWithTimeout = async (session: AgentSession, signal: AbortSignal | null, task: string) => {
-  let timer: ReturnType<typeof setTimeout> | null = null;
-
-  try {
-    await Promise.race([
-      runWithAbort(session, signal, task),
-      new Promise<never>((_resolve, reject) => {
-        timer = setTimeout(() => {
-          rejectAfterAbort(session, new Error('Sub-agent timed out.'), reject);
-        }, subagentTimeoutMs);
-      })
-    ]);
-  } finally {
-    if (timer) clearTimeout(timer);
-  }
-};
-
 export const runSubagents = async ({
   cwd,
   model,
@@ -155,7 +101,6 @@ export const runSubagents = async ({
     const name = nameAllocator.next(`${task.prompt}:${index}:${randomUUID()}`);
     return {
       name,
-      logs: [],
       id: randomUUID(),
       status: 'queued',
       task: task.prompt,
@@ -164,20 +109,13 @@ export const runSubagents = async ({
     };
   });
 
-  const update = () => onUpdate({ agents: agents.map((agent) => ({ ...agent, logs: [...agent.logs] })) });
-  let nextIndex = 0;
+  const update = () => onUpdate({ agents: agents.map((agent) => ({ ...agent })) });
   update();
 
-  const runNext = async (): Promise<void> => {
-    const index = nextIndex;
-    nextIndex += 1;
-    const agent = agents[index];
-    if (!agent) return;
-
+  const runAgent = async (agent: SubagentActivity): Promise<void> => {
     let session: AgentSession | null = null;
     try {
       agent.status = 'running';
-      pushLog(agent, 'Started');
       update();
 
       const sessionManager = SessionManager.inMemory(cwd);
@@ -198,17 +136,12 @@ export const runSubagents = async ({
 
       let endError = '';
       const unsubscribe = session.subscribe((event) => {
-        const log = eventLog(event);
-        if (log) {
-          pushLog(agent, log);
-          update();
-        }
         const error = agentEndError(event);
         if (error) endError = error;
       });
 
       try {
-        await runWithTimeout(session, signal ?? null, agent.task);
+        await runWithAbort(session, signal ?? null, agent.task);
       } finally {
         unsubscribe();
       }
@@ -216,24 +149,18 @@ export const runSubagents = async ({
       if (endError) throw new Error(endError);
 
       agent.status = 'completed';
-      agent.summary = truncateSummary(session.getLastAssistantText() || 'No summary returned.');
-      pushLog(agent, 'Completed');
+      agent.summary = (session.getLastAssistantText() || 'No summary returned.').trim();
       update();
     } catch (error) {
       agent.status = signal?.aborted ? 'cancelled' : 'failed';
       agent.summary = error instanceof Error ? error.message : 'Sub-agent failed.';
-      pushLog(agent, agent.status === 'cancelled' ? 'Cancelled' : 'Failed');
       update();
     } finally {
-      try {
-        session?.dispose();
-      } finally {
-        await runNext();
-      }
+      session?.dispose();
     }
   };
 
-  await Promise.all(Array.from({ length: Math.min(maxConcurrentAgents, agents.length) }, () => runNext()));
+  await Promise.all(agents.map((agent) => runAgent(agent)));
 
   return {
     text: `${countLabel(agents.length, 'sub-agent')} finished.\n\n${resultText(agents)}`,
